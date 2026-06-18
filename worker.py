@@ -60,17 +60,19 @@ async def process_account(browser, cookie_b64, account_num):
             # Like
             await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Like\"]'); if(s.length>0) s[0].closest('div[role=\"button\"]').click(); })();")
             await asyncio.sleep(1)
-            # 🔖 Save (नया फिक्स: शेयर के नीचे वाला बटन)
+            
+            # 🔖 Save (100% Fixed: Target exact SVG and click closest button)
             await page.evaluate("""(() => {
-                let btns = document.querySelectorAll('button, div[role="button"]');
-                for (let b of btns) {
-                    if (b.querySelector('svg[aria-label="Save"]')) {
-                        b.click();
-                        return;
+                let svgs = document.querySelectorAll('svg[aria-label="Save"], svg[aria-label="Bookmark"]');
+                if (svgs.length > 0) {
+                    let btn = svgs[0].closest('div[role="button"], button, a');
+                    if (btn) {
+                        btn.click();
                     }
                 }
             })();""")
             await asyncio.sleep(1)
+            
         except Exception as e: print("Actions Error:", e)
 
         # 2. Commenting Logic
