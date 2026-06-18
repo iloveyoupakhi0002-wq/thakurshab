@@ -1,0 +1,36 @@
+name: Insta Bot Worker
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        required: true
+      chat_id:
+        required: true
+      cookie_1:
+        required: true
+      cookie_2:
+        required: false
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.run_id }} # Har action apni queue mein aaram se chalega
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          pip install playwright requests
+          playwright install chromium
+      - name: Run Bot Worker
+        env:
+          TARGET_URL: ${{ github.event.inputs.target_url }}
+          CHAT_ID: ${{ github.event.inputs.chat_id }}
+          COOKIE_1: ${{ github.event.inputs.cookie_1 }}
+          COOKIE_2: ${{ github.event.inputs.cookie_2 }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+        run: python worker.py
