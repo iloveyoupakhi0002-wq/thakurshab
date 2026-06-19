@@ -9,7 +9,7 @@ import requests
 
 TARGET_URL = os.environ.get("TARGET_URL")
 CHAT_ID = os.environ.get("CHAT_ID")
-TG_TOKEN = os.environ.get("TG_TOKEN") 
+TG_TOKEN = os.environ.get("TG_TOKEN")
 C1_B64 = os.environ.get("COOKIE_1")
 C2_B64 = os.environ.get("COOKIE_2")
 
@@ -20,11 +20,10 @@ def send_screenshot(image_path, text):
     with open(image_path, 'rb') as photo:
         requests.post(url, data={'chat_id': CHAT_ID, 'caption': text}, files={'photo': photo})
 
-# 'session_name' parameter add kiya gaya hai
-async def process_account(browser, cookie_b64, session_name):
+async def process_account(browser, cookie_b64, account_num):
     if not cookie_b64: return
     
-    print(f"🟢 Starting Session: {session_name}...")
+    print(f"🟢 Starting Account {account_num}...")
     cookie_str = base64.b64decode(cookie_b64).decode()
     cookies = json.loads(cookie_str)
     
@@ -52,18 +51,17 @@ async def process_account(browser, cookie_b64, session_name):
         # 35s Wait
         await asyncio.sleep(35)
         
-        # 1. Follow, Like, Save, and Share (Actions)
+        # 1. Follow, Like, Save (Actions)
         current_comment = random.choice(COMMENTS_LIST)
         try:
             # Follow
             await page.evaluate("(() => { let b = document.querySelectorAll('button, div[role=\"button\"]'); for(let x of b) { if(x.innerText === 'Follow') { x.click(); return; } } })();")
             await asyncio.sleep(1)
-            
             # Like
             await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Like\"]'); if(s.length>0) s[0].closest('div[role=\"button\"]').click(); })();")
             await asyncio.sleep(1)
             
-            # 🔖 Save 
+            # 🔖 Save (100% Fixed: Target exact SVG and click closest button)
             await page.evaluate("""(() => {
                 let svgs = document.querySelectorAll('svg[aria-label="Save"], svg[aria-label="Bookmark"]');
                 if (svgs.length > 0) {
@@ -73,21 +71,6 @@ async def process_account(browser, cookie_b64, session_name):
                     }
                 }
             })();""")
-            await asyncio.sleep(1)
-
-            # 🚀 Share (Comment ke theek niche wala option)
-            await page.evaluate("""(() => {
-                let svgs = document.querySelectorAll('svg[aria-label="Share Post"], svg[aria-label="Share"]');
-                if (svgs.length > 0) {
-                    let btn = svgs[0].closest('div[role="button"], button, a');
-                    if (btn) {
-                        btn.click();
-                    }
-                }
-            })();""")
-            await asyncio.sleep(1)
-            # Share click karne par agar popup open ho toh usko close karne ke liye Escape press kar rahe hain
-            await page.keyboard.press("Escape")
             await asyncio.sleep(1)
             
         except Exception as e: print("Actions Error:", e)
@@ -112,28 +95,22 @@ async def process_account(browser, cookie_b64, session_name):
         wait_for_55 = 55 - elapsed
         if wait_for_55 > 0: await asyncio.sleep(wait_for_55)
             
-        screenshot_path = f"proof_{session_name}.png"
+        screenshot_path = f"proof_{account_num}.png"
         await page.screenshot(path=screenshot_path)
-        
-        # 📝 Caption mein Session Name set kar diya gaya hai
-        caption_text = f"✅ Session Name: {session_name}\n⏳ 55s Watch Proof\n💬 Comment: {current_comment}"
-        send_screenshot(screenshot_path, caption_text)
+        send_screenshot(screenshot_path, f"✅ Account {account_num} ka kaam aur 55s ka proof!\n📝 Comment: {current_comment}")
 
         # Complete 60s
         elapsed = time.time() - start_time
         if 60 - elapsed > 0: await asyncio.sleep(60 - elapsed)
             
-    except Exception as e: print(f"Error in {session_name}:", e)
+    except Exception as e: print("Error:", e)
     await context.close()
 
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True, args=["--start-maximized"])
-        
-        # Yahan par aap apne hisaab se session ka koi bhi naam pass kar sakte ho
-        await process_account(browser, C1_B64, "Session-1")
-        await process_account(browser, C2_B64, "Session-2")
-        
+        await process_account(browser, C1_B64, 1)
+        await process_account(browser, C2_B64, 2)
         await browser.close()
 
 if __name__ == "__main__":
