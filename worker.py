@@ -23,7 +23,10 @@ def send_screenshot(image_path, text):
 async def process_account(browser, cookie_b64, account_num):
     if not cookie_b64: return
     
-    print(f"🟢 Starting Account {account_num}...")
+    # Session/Account identifier string
+    session_name = f"Account_{account_num}_Session"
+    print(f"🟢 Starting {session_name}...")
+    
     cookie_str = base64.b64decode(cookie_b64).decode()
     cookies = json.loads(cookie_str)
     
@@ -61,7 +64,7 @@ async def process_account(browser, cookie_b64, account_num):
             await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Like\"]'); if(s.length>0) s[0].closest('div[role=\"button\"]').click(); })();")
             await asyncio.sleep(1)
             
-            # 🔖 Save (100% Fixed: Target exact SVG and click closest button)
+            # 🔖 Save
             await page.evaluate("""(() => {
                 let svgs = document.querySelectorAll('svg[aria-label="Save"], svg[aria-label="Bookmark"]');
                 if (svgs.length > 0) {
@@ -86,9 +89,25 @@ async def process_account(browser, cookie_b64, account_num):
             await asyncio.sleep(1)
             await page.keyboard.type(current_comment, delay=100)
             await page.keyboard.press("Enter")
+            await asyncio.sleep(3)
+        except Exception as e: print("Comment Error:", e)
+
+        # 3. Review / View Replies Click Logic
+        try:
+            # Ye script comment section ke niche standard 'reply' ya 'view' text wale elements ko dundh kar click karegi
+            await page.evaluate("""(() => {
+                let elements = document.querySelectorAll('span, button, div[role="button"]');
+                for (let el of elements) {
+                    let txt = el.innerText ? el.innerText.toLowerCase() : "";
+                    if (txt.includes('reply') || txt.includes('view') || txt.includes('review')) {
+                        el.click();
+                        break;
+                    }
+                }
+            })();""")
             await asyncio.sleep(2)
             await page.keyboard.press("Escape")
-        except Exception as e: print("Comment Error:", e)
+        except Exception as e: print("Review/Reply Click Error:", e)
 
         # 📸 55th Second Screenshot Logic
         elapsed = time.time() - start_time
@@ -97,7 +116,10 @@ async def process_account(browser, cookie_b64, account_num):
             
         screenshot_path = f"proof_{account_num}.png"
         await page.screenshot(path=screenshot_path)
-        send_screenshot(screenshot_path, f"✅ Account {account_num} ka kaam aur 55s ka proof!\n📝 Comment: {current_comment}")
+        
+        # Telegram caption me clear session details add kar di hain
+        caption_text = f"✅ Task Done!\n\n🌐 **Tab/Session:** {session_name}\n👤 **Account No:** {account_num}\n📝 **Comment:** {current_comment}\n⏱️ **Time:** 55s Proof"
+        send_screenshot(screenshot_path, caption_text)
 
         # Complete 60s
         elapsed = time.time() - start_time
@@ -114,4 +136,4 @@ async def main():
         await browser.close()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    async asyncio.run(main())
