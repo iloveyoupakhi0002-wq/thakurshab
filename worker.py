@@ -20,13 +20,11 @@ def send_screenshot(image_path, text):
     with open(image_path, 'rb') as photo:
         requests.post(url, data={'chat_id': CHAT_ID, 'caption': text}, files={'photo': photo})
 
-async def process_account(browser, cookie_b64, account_num):
+# 'session_name' parameter add kiya gaya hai
+async def process_account(browser, cookie_b64, session_name):
     if not cookie_b64: return
     
-    # Session/Account identifier string
-    session_name = f"Account_{account_num}_Session"
-    print(f"🟢 Starting {session_name}...")
-    
+    print(f"🟢 Starting Session: {session_name}...")
     cookie_str = base64.b64decode(cookie_b64).decode()
     cookies = json.loads(cookie_str)
     
@@ -54,17 +52,18 @@ async def process_account(browser, cookie_b64, account_num):
         # 35s Wait
         await asyncio.sleep(35)
         
-        # 1. Follow, Like, Save (Actions)
+        # 1. Follow, Like, Save, and Share (Actions)
         current_comment = random.choice(COMMENTS_LIST)
         try:
             # Follow
             await page.evaluate("(() => { let b = document.querySelectorAll('button, div[role=\"button\"]'); for(let x of b) { if(x.innerText === 'Follow') { x.click(); return; } } })();")
             await asyncio.sleep(1)
+            
             # Like
             await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Like\"]'); if(s.length>0) s[0].closest('div[role=\"button\"]').click(); })();")
             await asyncio.sleep(1)
             
-            # 🔖 Save
+            # 🔖 Save 
             await page.evaluate("""(() => {
                 let svgs = document.querySelectorAll('svg[aria-label="Save"], svg[aria-label="Bookmark"]');
                 if (svgs.length > 0) {
@@ -74,6 +73,21 @@ async def process_account(browser, cookie_b64, account_num):
                     }
                 }
             })();""")
+            await asyncio.sleep(1)
+
+            # 🚀 Share (Comment ke theek niche wala option)
+            await page.evaluate("""(() => {
+                let svgs = document.querySelectorAll('svg[aria-label="Share Post"], svg[aria-label="Share"]');
+                if (svgs.length > 0) {
+                    let btn = svgs[0].closest('div[role="button"], button, a');
+                    if (btn) {
+                        btn.click();
+                    }
+                }
+            })();""")
+            await asyncio.sleep(1)
+            # Share click karne par agar popup open ho toh usko close karne ke liye Escape press kar rahe hain
+            await page.keyboard.press("Escape")
             await asyncio.sleep(1)
             
         except Exception as e: print("Actions Error:", e)
@@ -89,49 +103,37 @@ async def process_account(browser, cookie_b64, account_num):
             await asyncio.sleep(1)
             await page.keyboard.type(current_comment, delay=100)
             await page.keyboard.press("Enter")
-            await asyncio.sleep(3)
-        except Exception as e: print("Comment Error:", e)
-
-        # 3. Review / View Replies Click Logic
-        try:
-            await page.evaluate("""(() => {
-                let elements = document.querySelectorAll('span, button, div[role="button"]');
-                for (let el of elements) {
-                    let txt = el.innerText ? el.innerText.toLowerCase() : "";
-                    if (txt.includes('reply') || txt.includes('view') || txt.includes('review')) {
-                        el.click();
-                        break;
-                    }
-                }
-            })();""")
             await asyncio.sleep(2)
             await page.keyboard.press("Escape")
-        except Exception as e: print("Review/Reply Click Error:", e)
+        except Exception as e: print("Comment Error:", e)
 
         # 📸 55th Second Screenshot Logic
         elapsed = time.time() - start_time
         wait_for_55 = 55 - elapsed
         if wait_for_55 > 0: await asyncio.sleep(wait_for_55)
             
-        screenshot_path = f"proof_{account_num}.png"
+        screenshot_path = f"proof_{session_name}.png"
         await page.screenshot(path=screenshot_path)
         
-        # Telegram caption text
-        caption_text = f"✅ Task Done!\n\n🌐 **Tab/Session:** {session_name}\n👤 **Account No:** {account_num}\n📝 **Comment:** {current_comment}\n⏱️ **Time:** 55s Proof"
+        # 📝 Caption mein Session Name set kar diya gaya hai
+        caption_text = f"✅ Session Name: {session_name}\n⏳ 55s Watch Proof\n💬 Comment: {current_comment}"
         send_screenshot(screenshot_path, caption_text)
 
         # Complete 60s
         elapsed = time.time() - start_time
         if 60 - elapsed > 0: await asyncio.sleep(60 - elapsed)
             
-    except Exception as e: print("Error:", e)
+    except Exception as e: print(f"Error in {session_name}:", e)
     await context.close()
 
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True, args=["--start-maximized"])
-        await process_account(browser, C1_B64, 1)
-        await process_account(browser, C2_B64, 2)
+        
+        # Yahan par aap apne hisaab se session ka koi bhi naam pass kar sakte ho
+        await process_account(browser, C1_B64, "Session-1")
+        await process_account(browser, C2_B64, "Session-2")
+        
         await browser.close()
 
 if __name__ == "__main__":
