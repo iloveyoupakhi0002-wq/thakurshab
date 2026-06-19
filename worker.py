@@ -94,7 +94,6 @@ async def process_account(browser, cookie_b64, account_num):
 
         # 3. Review / View Replies Click Logic
         try:
-            # Ye script comment section ke niche standard 'reply' ya 'view' text wale elements ko dundh kar click karegi
             await page.evaluate("""(() => {
                 let elements = document.querySelectorAll('span, button, div[role="button"]');
                 for (let el of elements) {
@@ -117,7 +116,7 @@ async def process_account(browser, cookie_b64, account_num):
         screenshot_path = f"proof_{account_num}.png"
         await page.screenshot(path=screenshot_path)
         
-        # Telegram caption me clear session details add kar di hain
+        # Telegram caption text
         caption_text = f"✅ Task Done!\n\n🌐 **Tab/Session:** {session_name}\n👤 **Account No:** {account_num}\n📝 **Comment:** {current_comment}\n⏱️ **Time:** 55s Proof"
         send_screenshot(screenshot_path, caption_text)
 
@@ -136,4 +135,4 @@ async def main():
         await browser.close()
 
 if __name__ == "__main__":
-    async asyncio.run(main())
+    asyncio.run(main())
