@@ -1,18 +1,17 @@
 import asyncio
 from playwright.async_api import async_playwright
 import os
+import base64
 import json
 import time
 import random
 import requests
-from dotenv import load_dotenv
-
-# PC par .env file se details uthane ke liye
-load_dotenv()
 
 TARGET_URL = os.environ.get("TARGET_URL")
 CHAT_ID = os.environ.get("CHAT_ID")
 TG_TOKEN = os.environ.get("TG_TOKEN") 
+C1_B64 = os.environ.get("COOKIE_1")
+C2_B64 = os.environ.get("COOKIE_2")
 
 COMMENTS_LIST = ["🔥 Ek number bhai!", "Bhai kya baat hai! 😍", "Superb video bro 🚀", "Gajab editing 👏"]
 
@@ -32,17 +31,18 @@ async def send_screenshot(image_path, text):
                 time.sleep(2)
     await asyncio.to_thread(_upload)
 
-async def process_account(browser, cookie_file, account_num):
-    if not os.path.exists(cookie_file):
-        print(f"⚠️ {cookie_file} nahi mili! Is file ko folder me bana aur usme Cookie-Editor ka code daal.")
+async def process_account(browser, cookie_b64, account_num):
+    if not cookie_b64: 
+        print(f"⚠️ Account {account_num} ki cookie nahi mili!")
         return
     
     print(f"\n=========================================")
     print(f"🟢 Starting Account {account_num}...")
     print(f"=========================================")
     
-    with open(cookie_file, 'r') as f:
-        cookies = json.load(f)
+    # Cloud ke liye wapas Base64 load kar raha hai
+    cookie_str = base64.b64decode(cookie_b64).decode()
+    cookies = json.loads(cookie_str)
     
     context = await browser.new_context(
         viewport={'width': 1920, 'height': 1080},
@@ -188,10 +188,10 @@ async def process_account(browser, cookie_file, account_num):
 
 async def main():
     async with async_playwright() as p:
-        # Browser PC pe open hoga dekhne ke liye (headless=False)
-        browser = await p.chromium.launch(headless=False, args=["--start-maximized"])
-        await process_account(browser, 'cookie1.json', 1)
-        await process_account(browser, 'cookie2.json', 2)
+        # 🚨 GitHub cloud ke liye headless=True
+        browser = await p.chromium.launch(headless=True, args=["--start-maximized"])
+        await process_account(browser, C1_B64, 1)
+        await process_account(browser, C2_B64, 2)
         print("\n🏆 SAARE ACCOUNTS KA KAAM SUCCESSFULLY COMPLETE HO GAYA!")
         await browser.close()
 
