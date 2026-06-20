@@ -40,7 +40,7 @@ async def process_account(browser, cookie_b64, account_num):
     print(f"🟢 Starting Account {account_num}...")
     print(f"=========================================")
     
-    # Cloud ke liye wapas Base64 load kar raha hai
+    # Base64 Cookies for GitHub Secrets
     cookie_str = base64.b64decode(cookie_b64).decode()
     cookies = json.loads(cookie_str)
     
@@ -86,20 +86,39 @@ async def process_account(browser, cookie_b64, account_num):
             await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Like\"]'); if(s.length>0) s[0].closest('div[role=\"button\"]').click(); })();")
             await asyncio.sleep(1)
         except Exception as e: print("Like Error:", e)
+        
+        # --- 3. SAVE ---
+        try:
+            print("🔖 Trying to Save...")
+            await page.evaluate("""(() => {
+                let svgs = document.querySelectorAll('svg[aria-label="Save"], svg[aria-label="Bookmark"]');
+                if (svgs.length > 0) {
+                    let btn = svgs[0].closest('div[role="button"], button, a');
+                    if (btn) { btn.click(); }
+                }
+            })();""")
+            await asyncio.sleep(1)
+        except Exception as e: print("Save Error:", e)
 
-        # --- 3. COMMENT & SCREENSHOTS ---
+        # --- 4. REPOST ---
+        try:
+            print("🔁 Trying to Repost...")
+            await page.evaluate("""(() => {
+                let svgs = document.querySelectorAll('svg[aria-label="Repost"]');
+                if (svgs.length > 0) {
+                    let btn = svgs[0].closest('div[role="button"], button, a');
+                    if (btn) { btn.click(); }
+                }
+            })();""")
+            await asyncio.sleep(1)
+        except Exception as e: print("Repost Error:", e)
+
+        # --- 5. COMMENT (BRAHMASTRA + POST BUTTON) ---
         try:
             print("💬 Comment icon par click kar raha hu...")
             await page.locator('svg[aria-label="Comment"]').first.click(force=True)
-            print("⏳ Panel khulne ka 4 seconds wait kar raha hu...")
             await asyncio.sleep(4) 
             
-            # 📸 SCREENSHOT 1: Panel Khulne Ke Baad
-            shot1_path = f"panel_open_acc{account_num}.png"
-            await page.screenshot(path=shot1_path)
-            print("📸 Screenshot 1 liya (Panel Open) - Telegram par bhej raha hu...")
-            await send_screenshot(shot1_path, f"1️⃣ Account {account_num} - Comment panel open ho gaya hai!")
-
             print("🖱️ Likhne wala dabba dhundh raha hu...")
             selectors = [
                 'textarea[aria-label*="comment" i]',
@@ -129,17 +148,20 @@ async def process_account(browser, cookie_b64, account_num):
             await page.keyboard.type(current_comment, delay=150)
             await asyncio.sleep(1)
             
-            print("🚀 Enter daba raha hu...")
-            await page.keyboard.press("Enter")
-            print(f"✅ Comment '{current_comment}' bheja gaya. 3 second wait kar raha hu post hone ka...")
-            await asyncio.sleep(3)
+            print("🚀 'Post' button dabane ki koshish kar raha hu...")
+            try:
+                post_btn = page.locator('div[role="button"]:has-text("Post"), span:has-text("Post")').last
+                if await post_btn.count() > 0 and await post_btn.is_visible():
+                    await post_btn.click(force=True)
+                else:
+                    await page.get_by_text("Post", exact=True).last.click(force=True)
+            except Exception:
+                print("⚠️ Post button click nahi hua, backup Enter daba raha hu...")
+                await page.keyboard.press("Enter")
+                
+            print(f"✅ Comment trigger kiya. 4 second wait kar raha hu post hone ka...")
+            await asyncio.sleep(4)
             
-            # 📸 SCREENSHOT 2: Comment Post Hone Ke Baad
-            shot2_path = f"comment_done_acc{account_num}.png"
-            await page.screenshot(path=shot2_path)
-            print("📸 Screenshot 2 liya (Comment Done) - Telegram par bhej raha hu...")
-            await send_screenshot(shot2_path, f"2️⃣ Account {account_num} - Comment POST ho gaya!\n📝 Text: {current_comment}")
-
             # Close panel
             await page.keyboard.press("Escape")
             await asyncio.sleep(1)
@@ -147,35 +169,21 @@ async def process_account(browser, cookie_b64, account_num):
         except Exception as e: 
             print(f"❌ Comment completely fail hua: {e}")
 
-        # --- 4. SAVE ---
-        try:
-            print("🔖 Trying to Save...")
-            await page.evaluate("""(() => {
-                let svgs = document.querySelectorAll('svg[aria-label="Save"], svg[aria-label="Bookmark"]');
-                if (svgs.length > 0) {
-                    let btn = svgs[0].closest('div[role="button"], button, a');
-                    if (btn) { btn.click(); }
-                }
-            })();""")
-            await asyncio.sleep(1)
-        except Exception as e: print("Save Error:", e)
+        print("✅ Saare Actions (Follow, Like, Save, Repost, Comment) Done!")
 
-        # --- 5. REPOST ---
-        try:
-            print("🔁 Trying to Repost...")
-            await page.evaluate("""(() => {
-                let svgs = document.querySelectorAll('svg[aria-label="Repost"]');
-                if (svgs.length > 0) {
-                    let btn = svgs[0].closest('div[role="button"], button, a');
-                    if (btn) { btn.click(); }
-                }
-            })();""")
-            await asyncio.sleep(1)
-        except Exception as e: print("Repost Error:", e)
+        # --- 6. EXACT 55th SECOND SCREENSHOT LOGIC ---
+        elapsed = time.time() - start_time
+        wait_for_55 = 55 - elapsed
+        if wait_for_55 > 0:
+            print(f"⏳ 55s mark tak pahunchne ke liye {int(wait_for_55)}s aur ruk raha hu...")
+            await asyncio.sleep(wait_for_55)
+            
+        screenshot_path = f"proof_{account_num}.png"
+        await page.screenshot(path=screenshot_path)
+        print("📸 55th Second par Screenshot liya! Telegram par bhej raha hu...")
+        await send_screenshot(screenshot_path, f"✅ Account {account_num} ka kaam aur 55s ka proof!\n📝 Comment: {current_comment}")
 
-        print("✅ Saare Actions (Follow, Like, Comment, Save, Repost) Done!")
-
-        # Complete exactly 60s
+        # --- 7. COMPLETE 60 SECONDS ---
         elapsed = time.time() - start_time
         if 60 - elapsed > 0: 
             print(f"⏳ Final wrap-up ke liye {int(60 - elapsed)} seconds bache hain, wait kar raha hu...")
@@ -188,7 +196,7 @@ async def process_account(browser, cookie_b64, account_num):
 
 async def main():
     async with async_playwright() as p:
-        # 🚨 GitHub cloud ke liye headless=True
+        # Headless=True rakha hai GitHub Actions ke liye
         browser = await p.chromium.launch(headless=True, args=["--start-maximized"])
         await process_account(browser, C1_B64, 1)
         await process_account(browser, C2_B64, 2)
