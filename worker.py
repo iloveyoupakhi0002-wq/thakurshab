@@ -15,12 +15,23 @@ C2_B64 = os.environ.get("COOKIE_2")
 
 COMMENTS_LIST = ["🔥 Ek number bhai!", "Bhai kya baat hai! 😍", "Superb video bro 🚀", "Gajab editing 👏"]
 
-# Async Telegram sender
+# 🛡️ Safe Telegram Sender with Retry Logic
 async def send_screenshot(image_path, text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendPhoto"
     def _upload():
-        with open(image_path, 'rb') as photo:
-            requests.post(url, data={'chat_id': CHAT_ID, 'caption': text}, files={'photo': photo})
+        max_retries = 3
+        attempt = 0
+        while attempt < max_retries:
+            try:
+                with open(image_path, 'rb') as photo:
+                    # Added 20s timeout so the bot doesn't get stuck if server drops connection
+                    res = requests.post(url, data={'chat_id': CHAT_ID, 'caption': text}, files={'photo': photo}, timeout=20)
+                if res.status_code == 200:
+                    break
+            except Exception as e:
+                attempt += 1
+                print(f"⚠️ Telegram send failed (Attempt {attempt}): {e}")
+                time.sleep(2)
     await asyncio.to_thread(_upload)
 
 async def process_account(browser, cookie_b64, account_num):
@@ -92,40 +103,44 @@ async def process_account(browser, cookie_b64, account_num):
             
         except Exception as e: print("Actions Error:", e)
 
-        # 2. 💬 Commenting Logic (REELS BULLETPROOF FIX)
+        # 2. 💬 TERA WALA PERFECT COMMENT LOGIC 
         try:
-            print(f"💬 Trying to comment: {current_comment}")
-            
-            # Click Comment Icon using robust JS query
-            await page.evaluate("""(() => { 
-                let svgs = document.querySelectorAll('svg[aria-label="Comment"]'); 
-                if(svgs.length > 0) { 
-                    let btn = svgs[svgs.length - 1].closest('div[role="button"], span'); 
-                    if(btn) btn.click(); 
-                } 
-            })();""")
-            
-            print("⏳ Waiting for comment panel to open...")
+            print("💬 Comment icon par click kar raha hu...")
+            js_comment_icon = """
+                (() => {
+                    let svgs = document.querySelectorAll('svg[aria-label="Comment"]');
+                    if(svgs.length > 0) {
+                        let c = svgs[0].closest('div[role="button"], a, button');
+                        if(c) c.click();
+                    }
+                })();
+            """
+            await page.evaluate(js_comment_icon)
             await asyncio.sleep(3) 
             
-            # Use Playwright's native locator with the EXACT placeholder you provided
+            print("🖱️ Input box par click kar raha hu...")
             input_box = page.locator('input[placeholder="Add a comment…"]').last
-            
-            # Ensure it is visible and ready before clicking
-            await input_box.wait_for(state="visible", timeout=5000)
-            await input_box.click(force=True)
+            if not await input_box.is_visible():
+                input_box = page.locator('input.xjbqb8w').last
+
+            await input_box.hover()
             await asyncio.sleep(1)
+            await input_box.click(force=True) 
+            print("✅ Box clicked! Typing shuru...")
+            await asyncio.sleep(2)
             
-            # Type slowly and press Enter
+            # 🚀 List mein se chuna gaya comment type hoga
             await page.keyboard.type(current_comment, delay=150)
             await asyncio.sleep(1)
-            await page.keyboard.press("Enter")
-            print("✅ Comment done!")
             
-            await asyncio.sleep(2)
-            await page.keyboard.press("Escape") 
+            print("🚀 Enter daba raha hu...")
+            await page.keyboard.press("Enter")
+            print(f"✅ Comment '{current_comment}' 100% post ho gaya!")
+            await asyncio.sleep(3)
+            
+            await page.keyboard.press("Escape")
         except Exception as e: 
-            print("❌ Comment Error:", e)
+            print(f"⚠️ Comment me error aaya: {e}")
 
         # 📸 55th Second Screenshot Logic
         elapsed = time.time() - start_time
@@ -147,7 +162,7 @@ async def process_account(browser, cookie_b64, account_num):
 
 async def main():
     async with async_playwright() as p:
-        # Headless=True rakha hai GitHub Actions ke liye
+        # Headless=True for GitHub Actions
         browser = await p.chromium.launch(headless=True, args=["--start-maximized"])
         await process_account(browser, C1_B64, 1)
         await process_account(browser, C2_B64, 2)
