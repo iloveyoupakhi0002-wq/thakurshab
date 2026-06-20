@@ -19,13 +19,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # 👇 1. YAHAN VPN LAGA RAHE HAIN (Sabse pehle IP change hogi) 👇
-      - name: Setup Cloudflare WARP VPN (Free IP Changer)
-        uses: ryandoyle/setup-cloudflare-warp@v1.2.0
-      
-      # 🔍 2. Check IP (Log me dikhega ki IP sach me change hui ya nahi)
-      - name: Check new IP Address
-        run: curl -s https://ipinfo.io/json
+      # 👇 DIRECT WARP VPN INSTALLATION (Bina kisi 3rd-party repo ke) 👇
+      - name: Setup Cloudflare WARP VPN Manually
+        run: |
+          curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
+          sudo apt-get update
+          sudo apt-get install cloudflare-warp -y
+          warp-cli --accept-tos registration new || warp-cli --accept-tos register
+          warp-cli --accept-tos connect
+          sleep 5
+          curl -s https://ipinfo.io/json
 
       - name: Set up Python
         uses: actions/setup-python@v4
