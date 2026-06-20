@@ -40,7 +40,7 @@ async def process_account(browser, cookie_b64, account_num):
     print(f"🟢 Starting Account {account_num}...")
     print(f"=========================================")
     
-    # Base64 Cookies for GitHub Secrets
+    # Cloud ke liye wapas Base64 load kar raha hai
     cookie_str = base64.b64decode(cookie_b64).decode()
     cookies = json.loads(cookie_str)
     
@@ -100,18 +100,29 @@ async def process_account(browser, cookie_b64, account_num):
             await asyncio.sleep(1)
         except Exception as e: print("Save Error:", e)
 
-        # --- 4. REPOST ---
+        # --- 4. REPOST (2-STEP FIX) ---
         try:
             print("🔁 Trying to Repost...")
-            await page.evaluate("""(() => {
-                let svgs = document.querySelectorAll('svg[aria-label="Repost"]');
-                if (svgs.length > 0) {
-                    let btn = svgs[0].closest('div[role="button"], button, a');
-                    if (btn) { btn.click(); }
-                }
-            })();""")
+            
+            # Step 1: Main Repost icon (Loop wala) par click
+            repost_icon = page.locator('svg[aria-label="Repost"]').first
+            await repost_icon.click(force=True)
+            print("⏳ Repost menu khulne ka 2 second wait kar raha hu...")
+            await asyncio.sleep(2) 
+            
+            # Step 2: Popup menu aane par asli "Repost" text wale button ko dabana
+            repost_confirm = page.locator('div[role="button"]:has-text("Repost"), div[role="menuitem"]:has-text("Repost"), span:has-text("Repost")').last
+            
+            if await repost_confirm.count() > 0 and await repost_confirm.is_visible():
+                await repost_confirm.click(force=True)
+                print("✅ Repost popup menu se successfully confirm ho gaya!")
+            else:
+                # Agar Insta ka UI 1-click wala hua, toh ye fallback kaam aayega
+                print("✅ Repost icon click ho gaya, koi popup nahi mila.")
+                
             await asyncio.sleep(1)
-        except Exception as e: print("Repost Error:", e)
+        except Exception as e: 
+            print(f"❌ Repost Error: {e}")
 
         # --- 5. COMMENT (BRAHMASTRA + POST BUTTON) ---
         try:
@@ -196,7 +207,7 @@ async def process_account(browser, cookie_b64, account_num):
 
 async def main():
     async with async_playwright() as p:
-        # Headless=True rakha hai GitHub Actions ke liye
+        # 🚨 GitHub cloud ke liye headless=True
         browser = await p.chromium.launch(headless=True, args=["--start-maximized"])
         await process_account(browser, C1_B64, 1)
         await process_account(browser, C2_B64, 2)
