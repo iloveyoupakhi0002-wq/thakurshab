@@ -15,13 +15,18 @@ C2_B64 = os.environ.get("COOKIE_2")
 
 COMMENTS_LIST = ["🔥 Ek number bhai!", "Bhai kya baat hai! 😍", "Superb video bro 🚀", "Gajab editing 👏"]
 
-def send_screenshot(image_path, text):
+# Async Telegram sender taaki loop freeze na ho
+async def send_screenshot(image_path, text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendPhoto"
-    with open(image_path, 'rb') as photo:
-        requests.post(url, data={'chat_id': CHAT_ID, 'caption': text}, files={'photo': photo})
+    def _upload():
+        with open(image_path, 'rb') as photo:
+            requests.post(url, data={'chat_id': CHAT_ID, 'caption': text}, files={'photo': photo})
+    await asyncio.to_thread(_upload)
 
 async def process_account(browser, cookie_b64, account_num):
-    if not cookie_b64: return
+    if not cookie_b64: 
+        print(f"⚠️ Account {account_num} ki cookie nahi mili!")
+        return
     
     print(f"🟢 Starting Account {account_num}...")
     cookie_str = base64.b64decode(cookie_b64).decode()
@@ -48,47 +53,64 @@ async def process_account(browser, cookie_b64, account_num):
         await page.goto(TARGET_URL, wait_until="domcontentloaded")
         start_time = time.time()
         
-        # 35s Wait
+        # 35s Wait for watch time
+        print("⏳ Waiting 35 seconds...")
         await asyncio.sleep(35)
         
-        # 1. Follow, Like, Save (Actions)
+        # 1. ⚡ Actions: Follow, Like, Save, Repost
         current_comment = random.choice(COMMENTS_LIST)
         try:
             # Follow
             await page.evaluate("(() => { let b = document.querySelectorAll('button, div[role=\"button\"]'); for(let x of b) { if(x.innerText === 'Follow') { x.click(); return; } } })();")
             await asyncio.sleep(1)
+            
             # Like
             await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Like\"]'); if(s.length>0) s[0].closest('div[role=\"button\"]').click(); })();")
             await asyncio.sleep(1)
             
-            # 🔖 Save (100% Fixed: Target exact SVG and click closest button)
+            # Save
             await page.evaluate("""(() => {
                 let svgs = document.querySelectorAll('svg[aria-label="Save"], svg[aria-label="Bookmark"]');
                 if (svgs.length > 0) {
                     let btn = svgs[0].closest('div[role="button"], button, a');
-                    if (btn) {
-                        btn.click();
-                    }
+                    if (btn) { btn.click(); }
                 }
             })();""")
             await asyncio.sleep(1)
+
+            # 🔁 Repost (Tere diye hue exact SVG se)
+            await page.evaluate("""(() => {
+                let svgs = document.querySelectorAll('svg[aria-label="Repost"]');
+                if (svgs.length > 0) {
+                    let btn = svgs[0].closest('div[role="button"], button, a');
+                    if (btn) { btn.click(); }
+                }
+            })();""")
+            await asyncio.sleep(1)
+            print("✅ Actions (Like, Save, Repost) Done!")
             
         except Exception as e: print("Actions Error:", e)
 
-        # 2. Commenting Logic
+        # 2. 💬 Commenting Logic (Tere diye hue exact input placeholder se)
         try:
+            print(f"💬 Trying to comment: {current_comment}")
+            # Click Comment Icon first to open the comment section
             await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Comment\"]'); if(s.length>0) s[0].closest('div[role=\"button\"]').click(); })();")
-            await asyncio.sleep(2)
+            await asyncio.sleep(3) 
+            
+            # Target the specific input box
             input_box = page.locator('input[placeholder="Add a comment…"]').last
-            if not await input_box.is_visible(): input_box = page.locator('input.xjbqb8w').last
-            await input_box.hover()
+            
+            # Ensure it's ready, click and type
             await input_box.click(force=True)
             await asyncio.sleep(1)
-            await page.keyboard.type(current_comment, delay=100)
+            await page.keyboard.type(current_comment, delay=150) # Human-like typing delay
+            await asyncio.sleep(1)
             await page.keyboard.press("Enter")
+            print("✅ Comment done!")
             await asyncio.sleep(2)
-            await page.keyboard.press("Escape")
-        except Exception as e: print("Comment Error:", e)
+            await page.keyboard.press("Escape") 
+        except Exception as e: print("❌ Comment Error:", e)
 
         # 📸 55th Second Screenshot Logic
         elapsed = time.time() - start_time
@@ -97,17 +119,20 @@ async def process_account(browser, cookie_b64, account_num):
             
         screenshot_path = f"proof_{account_num}.png"
         await page.screenshot(path=screenshot_path)
-        send_screenshot(screenshot_path, f"✅ Account {account_num} ka kaam aur 55s ka proof!\n📝 Comment: {current_comment}")
+        print("📸 Screenshot taken, sending to Telegram...")
+        await send_screenshot(screenshot_path, f"✅ Account {account_num} ka kaam aur 55s ka proof!\n📝 Comment: {current_comment}")
 
         # Complete 60s
         elapsed = time.time() - start_time
         if 60 - elapsed > 0: await asyncio.sleep(60 - elapsed)
             
     except Exception as e: print("Error:", e)
-    await context.close()
+    finally:
+        await context.close()
 
 async def main():
     async with async_playwright() as p:
+        # Headless=True for GitHub Actions
         browser = await p.chromium.launch(headless=True, args=["--start-maximized"])
         await process_account(browser, C1_B64, 1)
         await process_account(browser, C2_B64, 2)
