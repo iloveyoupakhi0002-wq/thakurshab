@@ -15,7 +15,7 @@ C2_B64 = os.environ.get("COOKIE_2")
 
 COMMENTS_LIST = ["🔥 Ek number bhai!", "Bhai kya baat hai! 😍", "Superb video bro 🚀", "Gajab editing 👏"]
 
-# Async Telegram sender taaki loop freeze na ho
+# Async Telegram sender
 async def send_screenshot(image_path, text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendPhoto"
     def _upload():
@@ -57,8 +57,9 @@ async def process_account(browser, cookie_b64, account_num):
         print("⏳ Waiting 35 seconds...")
         await asyncio.sleep(35)
         
-        # 1. ⚡ Actions: Follow, Like, Save, Repost
         current_comment = random.choice(COMMENTS_LIST)
+        
+        # 1. ⚡ Actions: Follow, Like, Save, Repost
         try:
             # Follow
             await page.evaluate("(() => { let b = document.querySelectorAll('button, div[role=\"button\"]'); for(let x of b) { if(x.innerText === 'Follow') { x.click(); return; } } })();")
@@ -78,7 +79,7 @@ async def process_account(browser, cookie_b64, account_num):
             })();""")
             await asyncio.sleep(1)
 
-            # 🔁 Repost (Tere diye hue exact SVG se)
+            # Repost
             await page.evaluate("""(() => {
                 let svgs = document.querySelectorAll('svg[aria-label="Repost"]');
                 if (svgs.length > 0) {
@@ -91,26 +92,40 @@ async def process_account(browser, cookie_b64, account_num):
             
         except Exception as e: print("Actions Error:", e)
 
-        # 2. 💬 Commenting Logic (Tere diye hue exact input placeholder se)
+        # 2. 💬 Commenting Logic (REELS BULLETPROOF FIX)
         try:
             print(f"💬 Trying to comment: {current_comment}")
-            # Click Comment Icon first to open the comment section
-            await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Comment\"]'); if(s.length>0) s[0].closest('div[role=\"button\"]').click(); })();")
+            
+            # Click Comment Icon using robust JS query
+            await page.evaluate("""(() => { 
+                let svgs = document.querySelectorAll('svg[aria-label="Comment"]'); 
+                if(svgs.length > 0) { 
+                    let btn = svgs[svgs.length - 1].closest('div[role="button"], span'); 
+                    if(btn) btn.click(); 
+                } 
+            })();""")
+            
+            print("⏳ Waiting for comment panel to open...")
             await asyncio.sleep(3) 
             
-            # Target the specific input box
+            # Use Playwright's native locator with the EXACT placeholder you provided
             input_box = page.locator('input[placeholder="Add a comment…"]').last
             
-            # Ensure it's ready, click and type
+            # Ensure it is visible and ready before clicking
+            await input_box.wait_for(state="visible", timeout=5000)
             await input_box.click(force=True)
             await asyncio.sleep(1)
-            await page.keyboard.type(current_comment, delay=150) # Human-like typing delay
+            
+            # Type slowly and press Enter
+            await page.keyboard.type(current_comment, delay=150)
             await asyncio.sleep(1)
             await page.keyboard.press("Enter")
             print("✅ Comment done!")
+            
             await asyncio.sleep(2)
             await page.keyboard.press("Escape") 
-        except Exception as e: print("❌ Comment Error:", e)
+        except Exception as e: 
+            print("❌ Comment Error:", e)
 
         # 📸 55th Second Screenshot Logic
         elapsed = time.time() - start_time
@@ -132,7 +147,7 @@ async def process_account(browser, cookie_b64, account_num):
 
 async def main():
     async with async_playwright() as p:
-        # Headless=True for GitHub Actions
+        # Headless=True rakha hai GitHub Actions ke liye
         browser = await p.chromium.launch(headless=True, args=["--start-maximized"])
         await process_account(browser, C1_B64, 1)
         await process_account(browser, C2_B64, 2)
