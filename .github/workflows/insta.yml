@@ -22,10 +22,13 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+          
+      # 👇 Yahan maine python-dotenv add kar diya hai taaki wo error na aaye
       - name: Install dependencies
         run: |
-          pip install playwright requests
+          pip install playwright requests python-dotenv
           playwright install chromium
+          
       - name: Run Bot Worker
         env:
           TARGET_URL: ${{ github.event.inputs.target_url }}
