@@ -15,15 +15,23 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.run_id }} # Har action apni queue mein aaram se chalega
+      group: ${{ github.run_id }} 
     steps:
       - uses: actions/checkout@v3
+
+      # 👇 1. YAHAN VPN LAGA RAHE HAIN (Sabse pehle IP change hogi) 👇
+      - name: Setup Cloudflare WARP VPN (Free IP Changer)
+        uses: ryandoyle/setup-cloudflare-warp@v1.2.0
+      
+      # 🔍 2. Check IP (Log me dikhega ki IP sach me change hui ya nahi)
+      - name: Check new IP Address
+        run: curl -s https://ipinfo.io/json
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
           
-      # 👇 Yahan maine python-dotenv add kar diya hai taaki wo error na aaye
       - name: Install dependencies
         run: |
           pip install playwright requests python-dotenv
