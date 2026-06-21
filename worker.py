@@ -92,12 +92,7 @@ async def process_account(browser, cookie_b64, account_num):
         current_comment = random.choice(COMMENTS_LIST)
 
         # --- PHASE 3: RANDOMIZED ACTIONS (The Card Shuffle) ---
-        
-        async def do_follow():
-            try:
-                print("👤 Action: Follow")
-                await page.evaluate("(() => { let b = document.querySelectorAll('button, div[role=\"button\"]'); for(let x of b) { if(x.innerText === 'Follow') { x.click(); return; } } })();")
-            except Exception as e: print("Follow Error:", e)
+        # ❌ FOLLOW WALA CODE HAMESHA KE LIYE DELETE KAR DIYA GAYA HAI VIRALITY KE LIYE ❌
 
         async def do_like():
             try:
@@ -128,45 +123,49 @@ async def process_account(browser, cookie_b64, account_num):
 
         async def do_comment():
             try:
-                print("💬 Action: Comment")
+                print("💬 Action: Comment (Sniper Fix)")
+                # Exact user-provided SVG tap karega
                 await page.locator('svg[aria-label="Comment"]').first.click(force=True)
                 await asyncio.sleep(3) 
-                selectors = ['.xjbqb8w', 'textarea[aria-label*="comment" i]', 'div[role="textbox"]', 'input[placeholder*="comment" i]', 'textarea[placeholder*="comment" i]']
-                box_found = False
-                for sel in selectors:
-                    target_box = page.locator(sel).last
-                    if await target_box.count() > 0 and await target_box.is_visible():
-                        await target_box.hover()
-                        await asyncio.sleep(1)
-                        await target_box.click(force=True)
-                        box_found = True
-                        break 
-                if not box_found: await page.keyboard.press("Tab")
                 
-                await asyncio.sleep(1)
-                await page.keyboard.type(current_comment, delay=150)
-                await asyncio.sleep(1)
+                # Exact user-provided Editor box dhoondhega
+                target_box = page.locator('p.xdj266r, div[contenteditable="true"][role="textbox"]').first
                 
-                try:
-                    post_btn = page.locator('div[role="button"]:has-text("Post"), span:has-text("Post")').last
-                    if await post_btn.count() > 0 and await post_btn.is_visible(): await post_btn.click(force=True)
-                    else: await page.get_by_text("Post", exact=True).last.click(force=True)
-                except: await page.keyboard.press("Enter")
+                if await target_box.count() > 0 and await target_box.is_visible():
+                    await target_box.click(force=True)
+                    await asyncio.sleep(1)
+                    
+                    print(f"✅ Dabba mil gaya, typing: {current_comment}")
+                    await page.keyboard.type(current_comment, delay=150)
+                    await asyncio.sleep(1)
+                    
+                    print("🚀 Post daba raha hu...")
+                    try:
+                        post_btn = page.locator('div[role="button"]:has-text("Post"), span:has-text("Post")').last
+                        if await post_btn.count() > 0 and await post_btn.is_visible():
+                            await post_btn.click(force=True)
+                        else:
+                            await page.keyboard.press("Enter")
+                    except: 
+                        await page.keyboard.press("Enter")
+                else:
+                    print("⚠️ P class dabba nahi mila, backup Tab press try kar raha hu...")
+                    await page.keyboard.press("Tab")
+                    await page.keyboard.type(current_comment, delay=150)
+                    await page.keyboard.press("Enter")
                 
                 await asyncio.sleep(4)
                 await page.keyboard.press("Escape")
                 await asyncio.sleep(1)
             except Exception as e: print("Comment Error:", e)
 
-        # 🎲 Actions ko shuffle kar rahe hain
-        actions = [do_follow, do_like, do_save, do_repost, do_comment]
+        # 🎲 Sirf 4 Actions (Like, Save, Repost, Comment) ko shuffle kar rahe hain
+        actions = [do_like, do_save, do_repost, do_comment]
         random.shuffle(actions)
 
         print("🃏 Shuffle done! Actions is random sequence me chalenge:")
         for action in actions:
-            await action() # Action chalega
-            
-            # Har action ke beech random aaram (insano ki tarah)
+            await action() 
             wait_time = random.randint(4, 10)
             print(f"   ⏳ Waiting {wait_time}s before next move...")
             await asyncio.sleep(wait_time)
@@ -188,7 +187,7 @@ async def process_account(browser, cookie_b64, account_num):
                 if (svgs.length > 0) { let a = svgs[0].closest('a'); if (a) { a.click(); return; } }
                 let btns = document.querySelectorAll('button, div[role="button"]');
                 for(let b of btns) {
-                    if(b.innerText === 'Follow' || b.innerText === 'Following') {
+                    if(b.innerText === 'Following') {
                         let link = b.closest('div').parentNode.querySelector('a');
                         if (link) { link.click(); return; }
                     }
