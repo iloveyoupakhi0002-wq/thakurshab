@@ -59,7 +59,6 @@ async def process_account(browser, cookie_b64, account_num):
         
     await context.add_cookies(cleaned_cookies)
     
-    # Pehla tab khola
     page = await context.new_page()
 
     try:
@@ -81,11 +80,11 @@ async def process_account(browser, cookie_b64, account_num):
         except Exception as e:
             print("⚠️ Warm-up minor issue, ignoring...")
 
-        # --- PHASE 2: NEW TAB FIX (100% Target URL Accuracy) ---
-        print("\n🧹 SPA Bug Fix: Opening a BRAND NEW TAB for your video...")
-        target_page = await context.new_page() # Naya tab banaya
-        await page.close() # Purana tab hamesha ke liye band kar diya jisme random reel thi
-        page = target_page # Ab se script naye tab ko chalayegi
+        # --- PHASE 2: NEW TAB FIX ---
+        print("\n🧹 Opening a BRAND NEW TAB for your video...")
+        target_page = await context.new_page()
+        await page.close() 
+        page = target_page 
         
         print(f"🎯 Jumping EXACTLY to Target URL in New Tab: {TARGET_URL}")
         await page.goto(TARGET_URL, wait_until="domcontentloaded")
@@ -128,13 +127,18 @@ async def process_account(browser, cookie_b64, account_num):
 
         async def do_comment():
             try:
-                print("💬 Action: Comment (Ultimate Fix)")
+                print("💬 Action: Comment (With Debug Screenshots)")
                 comment_icon = page.locator('svg[aria-label="Comment"]').first
                 if await comment_icon.count() > 0:
                     await comment_icon.click(force=True)
+                    print("⏳ Comment panel khulne ka wait kar raha hu (3s)...")
                     await asyncio.sleep(3) 
                     
-                    # Naya tarika: The EXACT visible textbox
+                    # 📸 DEBUG SCREENSHOT 1: Panel Status
+                    shot1 = f"debug_panel_{account_num}.png"
+                    await page.screenshot(path=shot1)
+                    await send_screenshot(shot1, f"🔍 DEBUG 1 (Acc {account_num}): Comment Panel Khul Gaya!")
+                    
                     box = page.locator('div[contenteditable="true"][role="textbox"]').last
                     if await box.count() > 0:
                         await box.click(force=True)
@@ -152,7 +156,14 @@ async def process_account(browser, cookie_b64, account_num):
                     else:
                         print("⚠️ Comment box nahi mila!")
                     
-                    await asyncio.sleep(4)
+                    print("⏳ Post hone ka wait kar raha hu (5s)...")
+                    await asyncio.sleep(5)
+                    
+                    # 📸 DEBUG SCREENSHOT 2: Post Result
+                    shot2 = f"debug_post_{account_num}.png"
+                    await page.screenshot(path=shot2)
+                    await send_screenshot(shot2, f"🔍 DEBUG 2 (Acc {account_num}): Post dabane ke baad ka screen!\n📝 Text: {current_comment}")
+                    
                     await page.keyboard.press("Escape")
                     await asyncio.sleep(1)
             except Exception as e: print("Comment Error:", e)
@@ -169,18 +180,18 @@ async def process_account(browser, cookie_b64, account_num):
 
         print("✅ Saare Actions poore hue!")
 
-        # --- PHASE 4: SCREENSHOT ---
-        print("\n📸 Reel page par screenshot le raha hu...")
+        # --- PHASE 4: FINAL SCREENSHOT ---
+        print("\n📸 Reel page par aakhiri screenshot le raha hu...")
         screenshot_path = f"proof_{account_num}.png"
         await page.screenshot(path=screenshot_path)
-        await send_screenshot(screenshot_path, f"✅ Account {account_num} Actions Done!\n⏱️ Destiny Time: {total_session_time}s\n📝 Text: {current_comment}")
+        await send_screenshot(screenshot_path, f"🏁 FINAL: Account {account_num} Actions Done!\n⏱️ Total Time: {total_session_time}s")
 
         # --- PHASE 5: EXACT WRAP-UP ---
         elapsed = time.time() - session_start_time
         remaining_time = total_session_time - elapsed
         
         if remaining_time > 0: 
-            print(f"⏳ Session close hone me {int(remaining_time)} seconds bache hain, watch time de raha hu...")
+            print(f"⏳ Session close hone me {int(remaining_time)} seconds bache hain...")
             await asyncio.sleep(remaining_time)
             
     except Exception as e: print("Error:", e)
