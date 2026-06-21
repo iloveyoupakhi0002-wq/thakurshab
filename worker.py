@@ -15,7 +15,7 @@ C2_B64 = os.environ.get("COOKIE_2")
 
 COMMENTS_LIST = ["🔥 Ek number bhai!", "Bhai kya baat hai! 😍", "Superb video bro 🚀", "Gajab editing 👏"]
 
-# 🛡️ Safe Telegram Sender with Retry Logic
+# 🛡️ Telegram Screenshot Sender
 async def send_screenshot(image_path, text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendPhoto"
     def _upload():
@@ -38,9 +38,12 @@ async def process_account(browser, cookie_b64, account_num):
     
     print(f"\n=========================================")
     print(f"🟢 Starting Account {account_num}...")
+    
+    # ⏱️ DESTINY TIMER: 90 se 115 seconds ke beech random total time
+    total_session_time = random.randint(90, 115)
+    print(f"⏱️ Is account ka Destiny Timer set hua hai: {total_session_time} seconds!")
     print(f"=========================================")
     
-    # Cloud ke liye wapas Base64 load kar raha hai
     cookie_str = base64.b64decode(cookie_b64).decode()
     cookies = json.loads(cookie_str)
     
@@ -59,150 +62,155 @@ async def process_account(browser, cookie_b64, account_num):
     page = await context.new_page()
 
     try:
+        session_start_time = time.time()
+        
+        # --- PHASE 1: WARM-UP (Human Emulation) ---
         print("🏠 Warming up on Home Page...")
         await page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
-        await asyncio.sleep(4)
+        await asyncio.sleep(random.randint(4, 7))
         
-        print(f"🎯 Going to Target URL: {TARGET_URL}")
+        print("🎬 Clicking on Reels tab for timepass...")
+        try:
+            await page.evaluate("(() => { let a = document.querySelectorAll('a[href^=\"/reels/\"]'); if(a.length>0) a[0].click(); })();")
+            await asyncio.sleep(random.randint(4, 7))
+            print("👇 Scrolling to next random reel...")
+            await page.keyboard.press("ArrowDown")
+            await asyncio.sleep(random.randint(3, 6))
+            print("👇 Scrolling again...")
+            await page.keyboard.press("ArrowDown")
+            await asyncio.sleep(random.randint(3, 6))
+        except Exception as e:
+            print("⚠️ Warm-up minor issue, ignoring...", e)
+
+        # --- PHASE 2: TARGET URL ---
+        print(f"\n🎯 Jumping to Target URL: {TARGET_URL}")
         await page.goto(TARGET_URL, wait_until="domcontentloaded")
-        start_time = time.time()
         
-        # 35s Wait for watch time
-        print("⏳ Waiting 35 seconds (Watch Time)...")
-        await asyncio.sleep(35)
+        print("⏳ Watching video peacefully for 10-15 seconds before doing anything...")
+        await asyncio.sleep(random.randint(10, 15))
         
         current_comment = random.choice(COMMENTS_LIST)
+
+        # --- PHASE 3: RANDOMIZED ACTIONS (The Card Shuffle) ---
         
-        # --- 1. FOLLOW ---
-        try:
-            print("👤 Trying to Follow...")
-            await page.evaluate("(() => { let b = document.querySelectorAll('button, div[role=\"button\"]'); for(let x of b) { if(x.innerText === 'Follow') { x.click(); return; } } })();")
-            await asyncio.sleep(1)
-        except Exception as e: print("Follow Error:", e)
-
-        # --- 2. LIKE ---
-        try:
-            print("❤️ Trying to Like...")
-            await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Like\"]'); if(s.length>0) s[0].closest('div[role=\"button\"]').click(); })();")
-            await asyncio.sleep(1)
-        except Exception as e: print("Like Error:", e)
-        
-        # --- 3. SAVE ---
-        try:
-            print("🔖 Trying to Save...")
-            await page.evaluate("""(() => {
-                let svgs = document.querySelectorAll('svg[aria-label="Save"], svg[aria-label="Bookmark"]');
-                if (svgs.length > 0) {
-                    let btn = svgs[0].closest('div[role="button"], button, a');
-                    if (btn) { btn.click(); }
-                }
-            })();""")
-            await asyncio.sleep(1)
-        except Exception as e: print("Save Error:", e)
-
-        # --- 4. REPOST (2-STEP FIX) ---
-        try:
-            print("🔁 Trying to Repost...")
-            
-            # Step 1: Main Repost icon (Loop wala) par click
-            repost_icon = page.locator('svg[aria-label="Repost"]').first
-            await repost_icon.click(force=True)
-            print("⏳ Repost menu khulne ka 2 second wait kar raha hu...")
-            await asyncio.sleep(2) 
-            
-            # Step 2: Popup menu aane par asli "Repost" text wale button ko dabana
-            repost_confirm = page.locator('div[role="button"]:has-text("Repost"), div[role="menuitem"]:has-text("Repost"), span:has-text("Repost")').last
-            
-            if await repost_confirm.count() > 0 and await repost_confirm.is_visible():
-                await repost_confirm.click(force=True)
-                print("✅ Repost popup menu se successfully confirm ho gaya!")
-            else:
-                # Agar Insta ka UI 1-click wala hua, toh ye fallback kaam aayega
-                print("✅ Repost icon click ho gaya, koi popup nahi mila.")
-                
-            await asyncio.sleep(1)
-        except Exception as e: 
-            print(f"❌ Repost Error: {e}")
-
-        # --- 5. COMMENT (BRAHMASTRA + POST BUTTON) ---
-        try:
-            print("💬 Comment icon par click kar raha hu...")
-            await page.locator('svg[aria-label="Comment"]').first.click(force=True)
-            await asyncio.sleep(4) 
-            
-            print("🖱️ Likhne wala dabba dhundh raha hu...")
-            selectors = [
-                'textarea[aria-label*="comment" i]',
-                'div[role="textbox"]',
-                'input[placeholder*="comment" i]',
-                'textarea[placeholder*="comment" i]',
-                '.xjbqb8w'
-            ]
-            
-            box_found = False
-            for selector in selectors:
-                target_box = page.locator(selector).last
-                if await target_box.count() > 0 and await target_box.is_visible():
-                    print(f"🎯 Dabba mil gaya is selector se: {selector}")
-                    await target_box.hover()
-                    await asyncio.sleep(1)
-                    await target_box.click(force=True)
-                    box_found = True
-                    break 
-            
-            if not box_found:
-                print("⚠️ Box seedha nahi mila, Tab daba kar try kar raha hu...")
-                await page.keyboard.press("Tab")
-            
-            print("✅ Typing shuru...")
-            await asyncio.sleep(1)
-            await page.keyboard.type(current_comment, delay=150)
-            await asyncio.sleep(1)
-            
-            print("🚀 'Post' button dabane ki koshish kar raha hu...")
+        async def do_follow():
             try:
-                post_btn = page.locator('div[role="button"]:has-text("Post"), span:has-text("Post")').last
-                if await post_btn.count() > 0 and await post_btn.is_visible():
-                    await post_btn.click(force=True)
-                else:
-                    await page.get_by_text("Post", exact=True).last.click(force=True)
-            except Exception:
-                print("⚠️ Post button click nahi hua, backup Enter daba raha hu...")
-                await page.keyboard.press("Enter")
+                print("👤 Action: Follow")
+                await page.evaluate("(() => { let b = document.querySelectorAll('button, div[role=\"button\"]'); for(let x of b) { if(x.innerText === 'Follow') { x.click(); return; } } })();")
+            except Exception as e: print("Follow Error:", e)
+
+        async def do_like():
+            try:
+                print("❤️ Action: Like")
+                await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Like\"]'); if(s.length>0) s[0].closest('div[role=\"button\"]').click(); })();")
+            except Exception as e: print("Like Error:", e)
+
+        async def do_save():
+            try:
+                print("🔖 Action: Save")
+                await page.evaluate("""(() => {
+                    let svgs = document.querySelectorAll('svg[aria-label="Save"], svg[aria-label="Bookmark"]');
+                    if (svgs.length > 0) { let btn = svgs[0].closest('div[role="button"], button, a'); if (btn) { btn.click(); } }
+                })();""")
+            except Exception as e: print("Save Error:", e)
+
+        async def do_repost():
+            try:
+                print("🔁 Action: Repost (2-Step)")
+                repost_icon = page.locator('svg[aria-label="Repost"]').first
+                await repost_icon.click(force=True)
+                await asyncio.sleep(2) 
+                repost_confirm = page.locator('div[role="button"]:has-text("Repost"), div[role="menuitem"]:has-text("Repost"), span:has-text("Repost")').last
+                if await repost_confirm.count() > 0 and await repost_confirm.is_visible():
+                    await repost_confirm.click(force=True)
+                await asyncio.sleep(1)
+            except Exception as e: print("Repost Error:", e)
+
+        async def do_comment():
+            try:
+                print("💬 Action: Comment")
+                await page.locator('svg[aria-label="Comment"]').first.click(force=True)
+                await asyncio.sleep(3) 
+                selectors = ['.xjbqb8w', 'textarea[aria-label*="comment" i]', 'div[role="textbox"]', 'input[placeholder*="comment" i]', 'textarea[placeholder*="comment" i]']
+                box_found = False
+                for sel in selectors:
+                    target_box = page.locator(sel).last
+                    if await target_box.count() > 0 and await target_box.is_visible():
+                        await target_box.hover()
+                        await asyncio.sleep(1)
+                        await target_box.click(force=True)
+                        box_found = True
+                        break 
+                if not box_found: await page.keyboard.press("Tab")
                 
-            print(f"✅ Comment trigger kiya. 4 second wait kar raha hu post hone ka...")
-            await asyncio.sleep(4)
-            
-            # Close panel
-            await page.keyboard.press("Escape")
-            await asyncio.sleep(1)
-            
-        except Exception as e: 
-            print(f"❌ Comment completely fail hua: {e}")
+                await asyncio.sleep(1)
+                await page.keyboard.type(current_comment, delay=150)
+                await asyncio.sleep(1)
+                
+                try:
+                    post_btn = page.locator('div[role="button"]:has-text("Post"), span:has-text("Post")').last
+                    if await post_btn.count() > 0 and await post_btn.is_visible(): await post_btn.click(force=True)
+                    else: await page.get_by_text("Post", exact=True).last.click(force=True)
+                except: await page.keyboard.press("Enter")
+                
+                await asyncio.sleep(4)
+                await page.keyboard.press("Escape")
+                await asyncio.sleep(1)
+            except Exception as e: print("Comment Error:", e)
 
-        print("✅ Saare Actions (Follow, Like, Save, Repost, Comment) Done!")
+        # 🎲 Actions ko shuffle kar rahe hain
+        actions = [do_follow, do_like, do_save, do_repost, do_comment]
+        random.shuffle(actions)
 
-        # --- 6. EXACT 55th SECOND SCREENSHOT LOGIC ---
-        elapsed = time.time() - start_time
-        wait_for_55 = 55 - elapsed
-        if wait_for_55 > 0:
-            print(f"⏳ 55s mark tak pahunchne ke liye {int(wait_for_55)}s aur ruk raha hu...")
-            await asyncio.sleep(wait_for_55)
+        print("🃏 Shuffle done! Actions is random sequence me chalenge:")
+        for action in actions:
+            await action() # Action chalega
             
+            # Har action ke beech random aaram (insano ki tarah)
+            wait_time = random.randint(4, 10)
+            print(f"   ⏳ Waiting {wait_time}s before next move...")
+            await asyncio.sleep(wait_time)
+
+        print("✅ Saare Actions Random sequence me successfully poore hue!")
+
+        # --- PHASE 4: SCREENSHOT (Reel Page Par) ---
+        print("\n📸 Reel page par saare actions dikhane ke liye screenshot le raha hu...")
         screenshot_path = f"proof_{account_num}.png"
         await page.screenshot(path=screenshot_path)
-        print("📸 55th Second par Screenshot liya! Telegram par bhej raha hu...")
-        await send_screenshot(screenshot_path, f"✅ Account {account_num} ka kaam aur 55s ka proof!\n📝 Comment: {current_comment}")
+        await send_screenshot(screenshot_path, f"✅ Account {account_num} Actions Done!\n⏱️ Destiny Time: {total_session_time}s\n📝 Text: {current_comment}")
 
-        # --- 7. COMPLETE 60 SECONDS ---
-        elapsed = time.time() - start_time
-        if 60 - elapsed > 0: 
-            print(f"⏳ Final wrap-up ke liye {int(60 - elapsed)} seconds bache hain, wait kar raha hu...")
-            await asyncio.sleep(60 - elapsed)
+        # --- PHASE 5: PROFILE DEEP DIVE (Fan Moment) ---
+        try:
+            print("\n🕵️‍♂️ Clicking on Username to visit profile...")
+            js_profile = """
+            (() => {
+                let svgs = document.querySelectorAll('canvas'); 
+                if (svgs.length > 0) { let a = svgs[0].closest('a'); if (a) { a.click(); return; } }
+                let btns = document.querySelectorAll('button, div[role="button"]');
+                for(let b of btns) {
+                    if(b.innerText === 'Follow' || b.innerText === 'Following') {
+                        let link = b.closest('div').parentNode.querySelector('a');
+                        if (link) { link.click(); return; }
+                    }
+                }
+            })();
+            """
+            await page.evaluate(js_profile)
+            print("⏳ Profile page par wait kar raha hu jab tak Destiny Timer poora na ho jaye...")
+        except Exception as e:
+            print("⚠️ Profile click mein issue, par video loop hoti rahegi...")
+
+        # --- PHASE 6: EXACT WRAP-UP ---
+        elapsed = time.time() - session_start_time
+        remaining_time = total_session_time - elapsed
+        
+        if remaining_time > 0: 
+            print(f"⏳ Session close hone me {int(remaining_time)} seconds bache hain...")
+            await asyncio.sleep(remaining_time)
             
     except Exception as e: print("Error:", e)
     finally:
-        print(f"🏁 Account {account_num} session closed.")
+        print(f"🏁 Account {account_num} session closed perfectly at Destiny Time.")
         await context.close()
 
 async def main():
