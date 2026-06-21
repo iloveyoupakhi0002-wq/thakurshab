@@ -41,8 +41,7 @@ async def process_account(browser, cookie_b64, account_num):
     
     # ⏱️ DESTINY TIMER: 90 se 115 seconds ke beech random total time
     total_session_time = random.randint(90, 115)
-    print(f"⏱️ Is account ka Destiny Timer set hua hai: {total_session_time} seconds!")
-    print(f"=========================================")
+    print(f"⏱️ Destiny Timer: {total_session_time} seconds!")
     
     cookie_str = base64.b64decode(cookie_b64).decode()
     cookies = json.loads(cookie_str)
@@ -59,6 +58,8 @@ async def process_account(browser, cookie_b64, account_num):
         cleaned_cookies.append(c)
         
     await context.add_cookies(cleaned_cookies)
+    
+    # Pehla tab khola
     page = await context.new_page()
 
     try:
@@ -78,21 +79,23 @@ async def process_account(browser, cookie_b64, account_num):
             await page.keyboard.press("ArrowDown")
             await asyncio.sleep(random.randint(3, 6))
         except Exception as e:
-            print("⚠️ Warm-up minor issue, ignoring...", e)
+            print("⚠️ Warm-up minor issue, ignoring...")
 
-        # --- PHASE 2: TARGET URL (Bug Fix: SPA Navigation Lock) ---
-        print("\n🧹 Clearing page state to avoid wrong video bug...")
-        await page.goto("about:blank") # Yeh trick Insta ko refresh karne par majboor karegi
+        # --- PHASE 2: NEW TAB FIX (100% Target URL Accuracy) ---
+        print("\n🧹 SPA Bug Fix: Opening a BRAND NEW TAB for your video...")
+        target_page = await context.new_page() # Naya tab banaya
+        await page.close() # Purana tab hamesha ke liye band kar diya jisme random reel thi
+        page = target_page # Ab se script naye tab ko chalayegi
         
-        print(f"🎯 Jumping EXACTLY to Target URL: {TARGET_URL}")
+        print(f"🎯 Jumping EXACTLY to Target URL in New Tab: {TARGET_URL}")
         await page.goto(TARGET_URL, wait_until="domcontentloaded")
         
-        print("⏳ Watching video peacefully for 10-15 seconds before doing anything...")
+        print("⏳ Watching your video peacefully for 10-15 seconds...")
         await asyncio.sleep(random.randint(10, 15))
         
         current_comment = random.choice(COMMENTS_LIST)
 
-        # --- PHASE 3: RANDOMIZED ACTIONS (Native Locators Only) ---
+        # --- PHASE 3: RANDOMIZED ACTIONS ---
 
         async def do_like():
             try:
@@ -105,7 +108,7 @@ async def process_account(browser, cookie_b64, account_num):
         async def do_save():
             try:
                 print("🔖 Action: Save")
-                save_btn = page.locator('svg[aria-label="Save"]').first
+                save_btn = page.locator('svg[aria-label="Save"], svg[aria-label="Bookmark"]').first
                 if await save_btn.count() > 0:
                     await save_btn.click(force=True)
             except Exception as e: print("Save Error:", e)
@@ -125,39 +128,35 @@ async def process_account(browser, cookie_b64, account_num):
 
         async def do_comment():
             try:
-                print("💬 Action: Comment (Strict Sniper Mode)")
+                print("💬 Action: Comment (Ultimate Fix)")
                 comment_icon = page.locator('svg[aria-label="Comment"]').first
                 if await comment_icon.count() > 0:
                     await comment_icon.click(force=True)
                     await asyncio.sleep(3) 
                     
-                    # Direct click on the editable div instead of searching P tags
-                    editor = page.locator('div[contenteditable="true"][role="textbox"], textarea[aria-label*="comment" i]').first
-                    
-                    if await editor.count() > 0 and await editor.is_visible():
-                        print("✅ Dabba mil gaya, click kar raha hu...")
-                        await editor.click(force=True)
+                    # Naya tarika: The EXACT visible textbox
+                    box = page.locator('div[contenteditable="true"][role="textbox"]').last
+                    if await box.count() > 0:
+                        await box.click(force=True)
                         await asyncio.sleep(1)
-                        
                         print(f"⌨️ Typing: {current_comment}")
                         await page.keyboard.type(current_comment, delay=150)
                         await asyncio.sleep(1)
                         
                         print("🚀 Post daba raha hu...")
-                        post_btn = page.locator('div[role="button"]:has-text("Post"), span:has-text("Post")').last
+                        post_btn = page.locator('div[role="button"]:has-text("Post")').last
                         if await post_btn.count() > 0 and await post_btn.is_visible():
                             await post_btn.click(force=True)
                         else:
                             await page.keyboard.press("Enter")
                     else:
-                        print("⚠️ Editor nahi mila!")
+                        print("⚠️ Comment box nahi mila!")
                     
                     await asyncio.sleep(4)
                     await page.keyboard.press("Escape")
                     await asyncio.sleep(1)
             except Exception as e: print("Comment Error:", e)
 
-        # 🎲 Sirf 4 Actions ko shuffle kar rahe hain
         actions = [do_like, do_save, do_repost, do_comment]
         random.shuffle(actions)
 
@@ -176,7 +175,7 @@ async def process_account(browser, cookie_b64, account_num):
         await page.screenshot(path=screenshot_path)
         await send_screenshot(screenshot_path, f"✅ Account {account_num} Actions Done!\n⏱️ Destiny Time: {total_session_time}s\n📝 Text: {current_comment}")
 
-        # --- PHASE 5: EXACT WRAP-UP (No Profile Click for Maximum Safety) ---
+        # --- PHASE 5: EXACT WRAP-UP ---
         elapsed = time.time() - session_start_time
         remaining_time = total_session_time - elapsed
         
