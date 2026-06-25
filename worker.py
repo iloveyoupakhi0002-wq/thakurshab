@@ -62,13 +62,11 @@ async def process_account(browser, cookie_b64, account_num):
         print("🏠 Warming up on Home Page...")
         await page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
         
-        # --- 7 Seconds Wait aur ESC Button ---
         print("⏳ Waiting exactly 7 seconds for popups to appear...")
         await asyncio.sleep(7)
         print("⌨️ Pressing 'Escape' to close any notifications/popups...")
         await page.keyboard.press("Escape")
-        await asyncio.sleep(1) # Chhota buffer escape ke baad
-        # -------------------------------------
+        await asyncio.sleep(1) 
 
         print(f"🎯 Going to Target URL: {TARGET_URL}")
         await page.goto(TARGET_URL, wait_until="domcontentloaded")
@@ -81,93 +79,104 @@ async def process_account(browser, cookie_b64, account_num):
         
         current_comment = random.choice(COMMENTS_LIST)
         
-        # Action Functions Define kar rahe hain
+        # 🟢 Action Functions (100% Scroll-Proof via JavaScript)
         async def do_like():
             try:
                 print("❤️ Trying to Like...")
-                await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Like\"]'); if(s.length>0) s[0].closest('div[role=\"button\"]').click(); })();")
+                await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Like\"]'); if(s.length>0) { let b = s[0].closest('div[role=\"button\"]'); if(b) b.click(); } })();")
                 await asyncio.sleep(1)
             except Exception as e: print("Like Error:", e)
 
         async def do_save():
             try:
                 print("🔖 Trying to Save...")
-                await page.evaluate("""(() => {
-                    let svgs = document.querySelectorAll('svg[aria-label="Save"], svg[aria-label="Bookmark"]');
-                    if (svgs.length > 0) {
-                        let btn = svgs[0].closest('div[role="button"], button, a');
-                        if (btn) { btn.click(); }
-                    }
-                })();""")
+                await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Save\"], svg[aria-label=\"Bookmark\"]'); if(s.length>0) { let b = s[0].closest('div[role=\"button\"]'); if(b) b.click(); } })();")
                 await asyncio.sleep(1)
             except Exception as e: print("Save Error:", e)
 
         async def do_repost():
             try:
-                print("🔁 Trying to Repost...")
-                repost_icon = page.locator('svg[aria-label="Repost"]').first
-                await repost_icon.click(force=True)
-                await asyncio.sleep(2) 
-                repost_confirm = page.locator('div[role="button"]:has-text("Repost"), div[role="menuitem"]:has-text("Repost"), span:has-text("Repost")').last
-                if await repost_confirm.count() > 0 and await repost_confirm.is_visible():
-                    await repost_confirm.click(force=True)
-                    print("✅ Repost confirm ho gaya!")
-                else:
-                    print("✅ Repost icon click ho gaya (fallback).")
+                print("🔁 Trying to Repost (Share)...")
+                # JS ke zariye Share icon click karenge taaki scroll na ho
+                clicked = await page.evaluate("""(() => {
+                    let s = document.querySelectorAll('svg[aria-label="Share Post"], svg[aria-label="Share"], svg[aria-label="Repost"]');
+                    if(s.length>0) { 
+                        let b = s[0].closest('div[role="button"], button, a'); 
+                        if(b) { b.click(); return true; }
+                    }
+                    return false;
+                })();""")
+                
+                if clicked:
+                    await asyncio.sleep(2) 
+                    # Confirm Repost bhi JS se karenge
+                    await page.evaluate("""(() => {
+                        let elements = document.querySelectorAll('div[role="button"], span, div');
+                        for(let el of elements) {
+                            if(el.textContent && el.textContent.trim() === 'Repost') {
+                                let btn = el.closest('div[role="button"]') || el;
+                                btn.click();
+                                break;
+                            }
+                        }
+                    })();""")
+                    print("✅ Repost done via JS!")
                 await asyncio.sleep(1)
             except Exception as e: 
                 print(f"❌ Repost Error: {e}")
 
-        # NAYA UPDATED COMMENT FUNCTION
         async def do_comment():
             try:
                 print("💬 Trying to Comment...")
-                # 1. Comment icon par click karna
-                comment_icon = page.locator('svg[aria-label="Comment"]').first
-                if await comment_icon.count() > 0:
-                    await comment_icon.click(force=True)
-                else:
+                # 1. Comment icon par JS se click (No Scroll)
+                icon_clicked = await page.evaluate("""(() => {
+                    let s = document.querySelectorAll('svg[aria-label="Comment"]');
+                    if(s.length>0) { 
+                        let b = s[0].closest('div[role="button"], button, a'); 
+                        if(b) { b.click(); return true; }
+                    }
+                    return false;
+                })();""")
+                
+                if not icon_clicked:
                     print("⚠️ Comment icon nahi mila.")
-                    return # Agar icon nahi mila to aage mat badho
+                    return
 
                 await asyncio.sleep(3) 
                 
-                # 2. Comment box dhundhna
-                selectors = [
-                    'textarea[aria-label*="comment" i]', 'div[role="textbox"]',
-                    'input[placeholder*="comment" i]', 'textarea[placeholder*="comment" i]', '.xjbqb8w'
-                ]
-                box_found = False
-                for selector in selectors:
-                    target_box = page.locator(selector).last
-                    if await target_box.count() > 0 and await target_box.is_visible():
-                        await target_box.hover()
-                        await asyncio.sleep(1)
-                        await target_box.click(force=True)
-                        box_found = True
-                        break 
+                # 2. Text Box dhundhkar usko focus karna (JS se)
+                box_focused = await page.evaluate("""(() => {
+                    let box = document.querySelector('textarea[aria-label*="comment" i], div[role="textbox"], input[placeholder*="comment" i], textarea[placeholder*="comment" i]');
+                    if(box) { 
+                        box.focus(); 
+                        box.click(); 
+                        return true; 
+                    }
+                    return false;
+                })();""")
                 
-                # 3. Agar box mila TABHI type aur enter karna hai
-                if box_found:
+                if box_focused:
                     await asyncio.sleep(1)
+                    # Ab safe hai type karna
                     await page.keyboard.type(current_comment, delay=150)
                     await asyncio.sleep(1)
                     
-                    try:
-                        post_btn = page.locator('div[role="button"]:has-text("Post"), span:has-text("Post")').last
-                        if await post_btn.count() > 0 and await post_btn.is_visible():
-                            await post_btn.click(force=True)
-                        else:
-                            await page.get_by_text("Post", exact=True).last.click(force=True)
-                    except Exception:
-                        print("⚠️ Post button find nahi hua, try pressing Enter carefully.")
-                        await page.keyboard.press("Enter")
+                    # 3. Post button par JS se click (No Scroll)
+                    await page.evaluate("""(() => {
+                        let elements = document.querySelectorAll('div[role="button"], span');
+                        for(let el of elements) {
+                            if(el.textContent && el.textContent.trim() === 'Post') {
+                                let btn = el.closest('div[role="button"]') || el;
+                                btn.click();
+                                break;
+                            }
+                        }
+                    })();""")
                 else:
-                    print("⚠️ Comment box detect nahi hua, typing skip kar rahe hain taaki video change na ho.")
+                    print("⚠️ Comment box detect nahi hua.")
                     
                 await asyncio.sleep(4)
-                await page.keyboard.press("Escape") # Comment modal close karne ke liye
-                await asyncio.sleep(1)
+                # 🚨 Yahan se 'Escape' hata diya hai taaki video player galti se close ya jump na ho
             except Exception as e: 
                 print(f"❌ Comment completely fail hua: {e}")
 
@@ -216,7 +225,6 @@ async def process_account(browser, cookie_b64, account_num):
 
 async def main():
     async with async_playwright() as p:
-        # Chromium ki jagah ab asli Google Chrome use kar rahe hain
         browser = await p.chromium.launch(channel="chrome", headless=True, args=["--start-maximized"])
         await process_account(browser, C1_B64, 1)
         await process_account(browser, C2_B64, 2)
@@ -224,4 +232,4 @@ async def main():
         await browser.close()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main())s
