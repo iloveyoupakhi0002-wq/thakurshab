@@ -59,9 +59,17 @@ async def process_account(browser, cookie_b64, account_num):
 
     start_time = time.time()
     try:
-        # 👇 CHANGE 2: Home page warmup hata diya, sidha Target URL par jaa raha hai
+        # 👇 Direct Target URL par navigation
         print(f"🎯 Going Directly to Target URL: {TARGET_URL}")
         await page.goto(TARGET_URL, wait_until="domcontentloaded")
+        await asyncio.sleep(3) 
+        
+        # 🛠️ Pop-ups aur tooltips hatane ka setup
+        print("🧹 Clearing annoying pop-ups...")
+        await page.keyboard.press("Escape")
+        await asyncio.sleep(1)
+        await page.mouse.click(10, 10) 
+        await asyncio.sleep(1)
         
         # --- RANDOM ACTION START TIME (15s to 45s) ---
         action_start_delay = random.randint(15, 45)
@@ -192,7 +200,7 @@ async def process_account(browser, cookie_b64, account_num):
 
 async def main():
     async with async_playwright() as p:
-        # 👇 CHANGE 1: channel="chrome" add kar diya asli Google Chrome chalane ke liye
+        # 👇 Asli Chrome channel yahan par set kiya hai
         browser = await p.chromium.launch(headless=True, channel="chrome", args=["--start-maximized"])
         
         await process_account(browser, C1_B64, 1)
