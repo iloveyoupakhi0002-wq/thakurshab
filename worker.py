@@ -40,6 +40,7 @@ async def process_account(browser, cookie_b64, account_num):
     print(f"🟢 Starting Account {account_num}...")
     print(f"=========================================")
     
+    # Cloud ke liye wapas Base64 load kar raha hai
     cookie_str = base64.b64decode(cookie_b64).decode()
     cookies = json.loads(cookie_str)
     
@@ -57,19 +58,21 @@ async def process_account(browser, cookie_b64, account_num):
     await context.add_cookies(cleaned_cookies)
     page = await context.new_page()
 
-    start_time = time.time()
     try:
-        # 👇 Direct Target URL par navigation
-        print(f"🎯 Going Directly to Target URL: {TARGET_URL}")
-        await page.goto(TARGET_URL, wait_until="domcontentloaded")
-        await asyncio.sleep(3) 
+        print("🏠 Warming up on Home Page...")
+        await page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
         
-        # 🛠️ Pop-ups aur tooltips hatane ka setup
-        print("🧹 Clearing annoying pop-ups...")
+        # --- NAYA LOGIC: 7 Seconds Wait aur ESC Button ---
+        print("⏳ Waiting exactly 7 seconds for popups to appear...")
+        await asyncio.sleep(7)
+        print("⌨️ Pressing 'Escape' to close any notifications/popups...")
         await page.keyboard.press("Escape")
-        await asyncio.sleep(1)
-        await page.mouse.click(10, 10) 
-        await asyncio.sleep(1)
+        await asyncio.sleep(1) # Chhota buffer escape ke baad taaki popup aaram se hatt jaye
+        # --------------------------------------------------
+
+        print(f"🎯 Going to Target URL: {TARGET_URL}")
+        await page.goto(TARGET_URL, wait_until="domcontentloaded")
+        start_time = time.time()
         
         # --- RANDOM ACTION START TIME (15s to 45s) ---
         action_start_delay = random.randint(15, 45)
@@ -78,6 +81,7 @@ async def process_account(browser, cookie_b64, account_num):
         
         current_comment = random.choice(COMMENTS_LIST)
         
+        # Action Functions Define kar rahe hain taki inko random order me chala sakein
         async def do_like():
             try:
                 print("❤️ Trying to Like...")
@@ -162,12 +166,12 @@ async def process_account(browser, cookie_b64, account_num):
             ("Repost", do_repost),
             ("Comment", do_comment)
         ]
-        random.shuffle(actions) 
+        random.shuffle(actions) # Har tab ke liye order shuffle ho jayega
         
         print("🎲 Random Action Order:", [a[0] for a in actions])
         for name, action in actions:
             await action()
-            await asyncio.sleep(random.uniform(1, 3)) 
+            await asyncio.sleep(random.uniform(1, 3)) # Do actions ke beech thoda random human delay
 
         print("✅ Saare Actions (Random Order mein) Done!")
 
@@ -200,14 +204,12 @@ async def process_account(browser, cookie_b64, account_num):
 
 async def main():
     async with async_playwright() as p:
-        # 👇 Asli Chrome channel yahan par set kiya hai
-        browser = await p.chromium.launch(headless=True, channel="chrome", args=["--start-maximized"])
-        
+        # 🚨 Chromium ki jagah ab asli Google Chrome use kar rahe hain (channel="chrome")
+        browser = await p.chromium.launch(channel="chrome", headless=True, args=["--start-maximized"])
         await process_account(browser, C1_B64, 1)
         await process_account(browser, C2_B64, 2)
-        
         print("\n🏆 SAARE ACCOUNTS KA KAAM SUCCESSFULLY COMPLETE HO GAYA!")
         await browser.close()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main())s
