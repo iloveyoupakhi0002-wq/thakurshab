@@ -59,22 +59,22 @@ async def process_account(browser, cookie_b64, account_num):
     page = await context.new_page()
 
     try:
-        print("🏠 Warming up on Home Page...")
+        print(f"🏠 Account {account_num}: Warming up on Home Page...")
         await page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
         
-        print("⏳ Waiting exactly 7 seconds for popups to appear...")
+        print(f"⏳ Account {account_num}: Waiting exactly 7 seconds for popups to appear...")
         await asyncio.sleep(7)
-        print("⌨️ Pressing 'Escape' to close any notifications/popups...")
+        print(f"⌨️ Account {account_num}: Pressing 'Escape' to close any notifications/popups...")
         await page.keyboard.press("Escape")
         await asyncio.sleep(1) 
 
-        print(f"🎯 Going to Target URL: {TARGET_URL}")
+        print(f"🎯 Account {account_num}: Going to Target URL: {TARGET_URL}")
         await page.goto(TARGET_URL, wait_until="domcontentloaded")
         start_time = time.time()
         
         # --- RANDOM ACTION START TIME (15s to 45s) ---
         action_start_delay = random.randint(15, 45)
-        print(f"⏳ Bot ab {action_start_delay} seconds wait karega actions shuru karne se pehle...")
+        print(f"⏳ Account {account_num}: Bot ab {action_start_delay} seconds wait karega actions shuru karne se pehle...")
         await asyncio.sleep(action_start_delay)
         
         current_comment = random.choice(COMMENTS_LIST)
@@ -82,22 +82,21 @@ async def process_account(browser, cookie_b64, account_num):
         # 🟢 Action Functions (100% Scroll-Proof via JavaScript)
         async def do_like():
             try:
-                print("❤️ Trying to Like...")
+                print(f"❤️ Account {account_num}: Trying to Like...")
                 await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Like\"]'); if(s.length>0) { let b = s[0].closest('div[role=\"button\"]'); if(b) b.click(); } })();")
                 await asyncio.sleep(1)
-            except Exception as e: print("Like Error:", e)
+            except Exception as e: print(f"Like Error Acc {account_num}:", e)
 
         async def do_save():
             try:
-                print("🔖 Trying to Save...")
+                print(f"🔖 Account {account_num}: Trying to Save...")
                 await page.evaluate("(() => { let s = document.querySelectorAll('svg[aria-label=\"Save\"], svg[aria-label=\"Bookmark\"]'); if(s.length>0) { let b = s[0].closest('div[role=\"button\"]'); if(b) b.click(); } })();")
                 await asyncio.sleep(1)
-            except Exception as e: print("Save Error:", e)
+            except Exception as e: print(f"Save Error Acc {account_num}:", e)
 
         async def do_repost():
             try:
-                print("🔁 Trying to Repost (Share)...")
-                # JS ke zariye Share icon click karenge taaki scroll na ho
+                print(f"🔁 Account {account_num}: Trying to Repost (Share)...")
                 clicked = await page.evaluate("""(() => {
                     let s = document.querySelectorAll('svg[aria-label="Share Post"], svg[aria-label="Share"], svg[aria-label="Repost"]');
                     if(s.length>0) { 
@@ -109,7 +108,6 @@ async def process_account(browser, cookie_b64, account_num):
                 
                 if clicked:
                     await asyncio.sleep(2) 
-                    # Confirm Repost bhi JS se karenge
                     await page.evaluate("""(() => {
                         let elements = document.querySelectorAll('div[role="button"], span, div');
                         for(let el of elements) {
@@ -120,15 +118,14 @@ async def process_account(browser, cookie_b64, account_num):
                             }
                         }
                     })();""")
-                    print("✅ Repost done via JS!")
+                    print(f"✅ Account {account_num}: Repost done via JS!")
                 await asyncio.sleep(1)
             except Exception as e: 
-                print(f"❌ Repost Error: {e}")
+                print(f"❌ Account {account_num} Repost Error: {e}")
 
         async def do_comment():
             try:
-                print("💬 Trying to Comment...")
-                # 1. Comment icon par JS se click (No Scroll)
+                print(f"💬 Account {account_num}: Trying to Comment...")
                 icon_clicked = await page.evaluate("""(() => {
                     let s = document.querySelectorAll('svg[aria-label="Comment"]');
                     if(s.length>0) { 
@@ -139,12 +136,11 @@ async def process_account(browser, cookie_b64, account_num):
                 })();""")
                 
                 if not icon_clicked:
-                    print("⚠️ Comment icon nahi mila.")
+                    print(f"⚠️ Account {account_num}: Comment icon nahi mila.")
                     return
 
                 await asyncio.sleep(3) 
                 
-                # 2. Text Box dhundhkar usko focus karna (JS se)
                 box_focused = await page.evaluate("""(() => {
                     let box = document.querySelector('textarea[aria-label*="comment" i], div[role="textbox"], input[placeholder*="comment" i], textarea[placeholder*="comment" i]');
                     if(box) { 
@@ -157,11 +153,9 @@ async def process_account(browser, cookie_b64, account_num):
                 
                 if box_focused:
                     await asyncio.sleep(1)
-                    # Ab safe hai type karna
                     await page.keyboard.type(current_comment, delay=150)
                     await asyncio.sleep(1)
                     
-                    # 3. Post button par JS se click (No Scroll)
                     await page.evaluate("""(() => {
                         let elements = document.querySelectorAll('div[role="button"], span');
                         for(let el of elements) {
@@ -173,12 +167,11 @@ async def process_account(browser, cookie_b64, account_num):
                         }
                     })();""")
                 else:
-                    print("⚠️ Comment box detect nahi hua.")
+                    print(f"⚠️ Account {account_num}: Comment box detect nahi hua.")
                     
                 await asyncio.sleep(4)
-                # 🚨 Yahan se 'Escape' hata diya hai taaki video player galti se close ya jump na ho
             except Exception as e: 
-                print(f"❌ Comment completely fail hua: {e}")
+                print(f"❌ Account {account_num} Comment fail hua: {e}")
 
         # --- RANDOMIZE WORKFLOW ORDER ---
         actions = [
@@ -189,23 +182,23 @@ async def process_account(browser, cookie_b64, account_num):
         ]
         random.shuffle(actions) 
         
-        print("🎲 Random Action Order:", [a[0] for a in actions])
+        print(f"🎲 Account {account_num} Random Action Order:", [a[0] for a in actions])
         for name, action in actions:
             await action()
             await asyncio.sleep(random.uniform(1, 3)) 
 
-        print("✅ Saare Actions (Random Order mein) Done!")
+        print(f"✅ Account {account_num}: Saare Actions Done!")
 
         # --- EXACT 75th SECOND SCREENSHOT LOGIC ---
         elapsed = time.time() - start_time
         wait_for_75 = 75 - elapsed
         if wait_for_75 > 0:
-            print(f"⏳ 75s mark tak pahunchne ke liye {int(wait_for_75)}s aur ruk raha hu...")
+            print(f"⏳ Account {account_num}: 75s mark tak pahunchne ke liye {int(wait_for_75)}s aur ruk raha hu...")
             await asyncio.sleep(wait_for_75)
             
         screenshot_path = f"proof_{account_num}.png"
         await page.screenshot(path=screenshot_path)
-        print("📸 75th Second par Screenshot liya! Telegram par bhej raha hu...")
+        print(f"📸 Account {account_num}: 75th Second par Screenshot liya! Telegram par bhej raha hu...")
         await send_screenshot(screenshot_path, f"✅ Account {account_num} ka kaam aur 75s ka proof!\n📝 Comment: {current_comment}")
 
         # --- RANDOM EXIT BETWEEN 80 to 90 SECONDS ---
@@ -214,10 +207,10 @@ async def process_account(browser, cookie_b64, account_num):
         wait_for_exit = exit_time_target - elapsed_now
         
         if wait_for_exit > 0: 
-            print(f"⏳ Final Random Exit ({exit_time_target}s) ke liye {int(wait_for_exit)} seconds bache hain, wait kar raha hu...")
+            print(f"⏳ Account {account_num}: Final Random Exit ke liye {int(wait_for_exit)} seconds bache hain...")
             await asyncio.sleep(wait_for_exit)
             
-    except Exception as e: print("Error:", e)
+    except Exception as e: print(f"Error in Account {account_num}:", e)
     finally:
         total_time_spent = int(time.time() - start_time) if 'start_time' in locals() else 0
         print(f"🏁 Account {account_num} session closed after ~{total_time_spent} seconds.")
@@ -226,8 +219,22 @@ async def process_account(browser, cookie_b64, account_num):
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(channel="chrome", headless=True, args=["--start-maximized"])
-        await process_account(browser, C1_B64, 1)
-        await process_account(browser, C2_B64, 2)
+        
+        # 🚀 PARALLEL EXECUTION LOGIC ADDED HERE 🚀
+        print("\n🚀 Dono accounts ko ek saath (Parallel) start kar rahe hain...\n")
+        
+        tasks = []
+        if C1_B64:
+            tasks.append(process_account(browser, C1_B64, 1))
+        if C2_B64:
+            tasks.append(process_account(browser, C2_B64, 2))
+            
+        if tasks:
+            # Ye dono tasks ko ek hi waqt par run karega
+            await asyncio.gather(*tasks)
+        else:
+            print("⚠️ Koi cookie provide nahi ki gayi hai!")
+            
         print("\n🏆 SAARE ACCOUNTS KA KAAM SUCCESSFULLY COMPLETE HO GAYA!")
         await browser.close()
 
