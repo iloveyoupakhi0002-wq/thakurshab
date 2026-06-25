@@ -40,7 +40,6 @@ async def process_account(browser, cookie_b64, account_num):
     print(f"🟢 Starting Account {account_num}...")
     print(f"=========================================")
     
-    # Cloud ke liye wapas Base64 load kar raha hai
     cookie_str = base64.b64decode(cookie_b64).decode()
     cookies = json.loads(cookie_str)
     
@@ -79,7 +78,7 @@ async def process_account(browser, cookie_b64, account_num):
         
         current_comment = random.choice(COMMENTS_LIST)
         
-        # 🟢 Action Functions (100% Scroll-Proof via JavaScript)
+        # 🟢 Action Functions
         async def do_like():
             try:
                 print(f"❤️ Account {account_num}: Trying to Like...")
@@ -119,6 +118,20 @@ async def process_account(browser, cookie_b64, account_num):
                         }
                     })();""")
                     print(f"✅ Account {account_num}: Repost done via JS!")
+
+                    # 🚨 NAYA LOGIC: "You reposted this" Popup Close Karne Ke Liye
+                    await asyncio.sleep(2) # Popup screen par aane ka wait
+                    await page.evaluate("""(() => {
+                        // "Close" aria-label wala SVG (X button) find karna
+                        let closeBtns = document.querySelectorAll('svg[aria-label="Close"]');
+                        if(closeBtns.length > 0) {
+                            // Sabse latest popup wale button ko click karna
+                            let btn = closeBtns[closeBtns.length - 1].closest('div[role="button"], button');
+                            if(btn) { btn.click(); }
+                        }
+                    })();""")
+                    print(f"✅ Account {account_num}: Repost Popup successfully closed!")
+                    
                 await asyncio.sleep(1)
             except Exception as e: 
                 print(f"❌ Account {account_num} Repost Error: {e}")
@@ -220,7 +233,6 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(channel="chrome", headless=True, args=["--start-maximized"])
         
-        # 🚀 PARALLEL EXECUTION LOGIC ADDED HERE 🚀
         print("\n🚀 Dono accounts ko ek saath (Parallel) start kar rahe hain...\n")
         
         tasks = []
@@ -230,7 +242,6 @@ async def main():
             tasks.append(process_account(browser, C2_B64, 2))
             
         if tasks:
-            # Ye dono tasks ko ek hi waqt par run karega
             await asyncio.gather(*tasks)
         else:
             print("⚠️ Koi cookie provide nahi ki gayi hai!")
