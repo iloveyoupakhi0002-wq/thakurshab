@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # 👇 DIRECT WARP VPN INSTALLATION (Free IP ke liye) 👇
+      # 👇 DIRECT WARP VPN INSTALLATION (Bina kisi 3rd-party repo ke) 👇
       - name: Setup Cloudflare WARP VPN Manually
         run: |
           curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install playwright requests python-dotenv
-          # 👇 CHANGE: Yahan asli Google Chrome install karne ki command daal di hai
+          # 🚨 Yahan ab sirf asli Chrome install hoga Chromium ki jagah
           playwright install chrome
           
       - name: Run Bot Worker
@@ -49,4 +49,5 @@ jobs:
           COOKIE_1: ${{ github.event.inputs.cookie_1 }}
           COOKIE_2: ${{ github.event.inputs.cookie_2 }}
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
+        # 🚨 Script run command ko tumhare actual file name ke hisaab se update kiya
         run: python worker.py
