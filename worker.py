@@ -62,13 +62,13 @@ async def process_account(browser, cookie_b64, account_num):
         print("🏠 Warming up on Home Page...")
         await page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
         
-        # --- NAYA LOGIC: 7 Seconds Wait aur ESC Button ---
+        # --- 7 Seconds Wait aur ESC Button ---
         print("⏳ Waiting exactly 7 seconds for popups to appear...")
         await asyncio.sleep(7)
         print("⌨️ Pressing 'Escape' to close any notifications/popups...")
         await page.keyboard.press("Escape")
-        await asyncio.sleep(1) # Chhota buffer escape ke baad taaki popup aaram se hatt jaye
-        # --------------------------------------------------
+        await asyncio.sleep(1) # Chhota buffer escape ke baad
+        # -------------------------------------
 
         print(f"🎯 Going to Target URL: {TARGET_URL}")
         await page.goto(TARGET_URL, wait_until="domcontentloaded")
@@ -81,7 +81,7 @@ async def process_account(browser, cookie_b64, account_num):
         
         current_comment = random.choice(COMMENTS_LIST)
         
-        # Action Functions Define kar rahe hain taki inko random order me chala sakein
+        # Action Functions Define kar rahe hain
         async def do_like():
             try:
                 print("❤️ Trying to Like...")
@@ -118,11 +118,21 @@ async def process_account(browser, cookie_b64, account_num):
             except Exception as e: 
                 print(f"❌ Repost Error: {e}")
 
+        # NAYA UPDATED COMMENT FUNCTION
         async def do_comment():
             try:
                 print("💬 Trying to Comment...")
-                await page.locator('svg[aria-label="Comment"]').first.click(force=True)
+                # 1. Comment icon par click karna
+                comment_icon = page.locator('svg[aria-label="Comment"]').first
+                if await comment_icon.count() > 0:
+                    await comment_icon.click(force=True)
+                else:
+                    print("⚠️ Comment icon nahi mila.")
+                    return # Agar icon nahi mila to aage mat badho
+
                 await asyncio.sleep(3) 
+                
+                # 2. Comment box dhundhna
                 selectors = [
                     'textarea[aria-label*="comment" i]', 'div[role="textbox"]',
                     'input[placeholder*="comment" i]', 'textarea[placeholder*="comment" i]', '.xjbqb8w'
@@ -137,24 +147,26 @@ async def process_account(browser, cookie_b64, account_num):
                         box_found = True
                         break 
                 
-                if not box_found:
-                    await page.keyboard.press("Tab")
-                
-                await asyncio.sleep(1)
-                await page.keyboard.type(current_comment, delay=150)
-                await asyncio.sleep(1)
-                
-                try:
-                    post_btn = page.locator('div[role="button"]:has-text("Post"), span:has-text("Post")').last
-                    if await post_btn.count() > 0 and await post_btn.is_visible():
-                        await post_btn.click(force=True)
-                    else:
-                        await page.get_by_text("Post", exact=True).last.click(force=True)
-                except Exception:
-                    await page.keyboard.press("Enter")
+                # 3. Agar box mila TABHI type aur enter karna hai
+                if box_found:
+                    await asyncio.sleep(1)
+                    await page.keyboard.type(current_comment, delay=150)
+                    await asyncio.sleep(1)
+                    
+                    try:
+                        post_btn = page.locator('div[role="button"]:has-text("Post"), span:has-text("Post")').last
+                        if await post_btn.count() > 0 and await post_btn.is_visible():
+                            await post_btn.click(force=True)
+                        else:
+                            await page.get_by_text("Post", exact=True).last.click(force=True)
+                    except Exception:
+                        print("⚠️ Post button find nahi hua, try pressing Enter carefully.")
+                        await page.keyboard.press("Enter")
+                else:
+                    print("⚠️ Comment box detect nahi hua, typing skip kar rahe hain taaki video change na ho.")
                     
                 await asyncio.sleep(4)
-                await page.keyboard.press("Escape")
+                await page.keyboard.press("Escape") # Comment modal close karne ke liye
                 await asyncio.sleep(1)
             except Exception as e: 
                 print(f"❌ Comment completely fail hua: {e}")
@@ -166,12 +178,12 @@ async def process_account(browser, cookie_b64, account_num):
             ("Repost", do_repost),
             ("Comment", do_comment)
         ]
-        random.shuffle(actions) # Har tab ke liye order shuffle ho jayega
+        random.shuffle(actions) 
         
         print("🎲 Random Action Order:", [a[0] for a in actions])
         for name, action in actions:
             await action()
-            await asyncio.sleep(random.uniform(1, 3)) # Do actions ke beech thoda random human delay
+            await asyncio.sleep(random.uniform(1, 3)) 
 
         print("✅ Saare Actions (Random Order mein) Done!")
 
@@ -204,7 +216,7 @@ async def process_account(browser, cookie_b64, account_num):
 
 async def main():
     async with async_playwright() as p:
-        # 🚨 Chromium ki jagah ab asli Google Chrome use kar rahe hain (channel="chrome")
+        # Chromium ki jagah ab asli Google Chrome use kar rahe hain
         browser = await p.chromium.launch(channel="chrome", headless=True, args=["--start-maximized"])
         await process_account(browser, C1_B64, 1)
         await process_account(browser, C2_B64, 2)
