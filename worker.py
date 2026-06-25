@@ -64,7 +64,34 @@ async def process_account(browser, cookie_b64, account_num):
         await asyncio.sleep(4)
         
         print(f"🎯 Going to Target URL: {TARGET_URL}")
-        await page.goto(TARGET_URL, wait_until="domcontentloaded")
+        await page.goto(TARGET_URL, wait_until="networkidle")
+        await asyncio.sleep(4)
+
+        # 🛡️ FIX 1: Turn on Notifications ya popups ko Escape dabakar close karna
+        print("🛑 Closing popups (if any) using Escape key...")
+        await page.keyboard.press("Escape")
+        await asyncio.sleep(2)
+        await page.keyboard.press("Escape") # Ek extra baar safe side ke liye
+        await asyncio.sleep(1)
+        
+        # 🛡️ FIX 2: URL Verification Check (Galat video par jane se rokne ke liye)
+        current_url = page.url
+        if TARGET_URL and TARGET_URL.split('?')[0] not in current_url: 
+            print(f"⚠️ Oops! Instagram ne redirect kar diya (Current: {current_url}). Wapas Target URL par jaa raha hu...")
+            await page.goto(TARGET_URL, wait_until="networkidle")
+            await asyncio.sleep(4)
+            await page.keyboard.press("Escape") # Fir se popup hatao
+            
+            if TARGET_URL.split('?')[0] not in page.url:
+                print("❌ Account target video par nahi pohoch paaya. Skipping...")
+                return
+
+        # Reels infinite scroll ko rokne ke liye ek baar page par click karke focus le aao
+        try:
+            await page.mouse.click(500, 500) 
+        except:
+            pass
+
         start_time = time.time()
         
         # --- RANDOM ACTION START TIME (15s to 45s) ---
@@ -134,7 +161,7 @@ async def process_account(browser, cookie_b64, account_num):
                     await page.keyboard.press("Tab")
                 
                 await asyncio.sleep(1)
-                await page.keyboard.type(current_comment, delay=150)
+                await page.keyboard.type(current_comment, delay=random.randint(100, 250)) # Added random human delay here too
                 await asyncio.sleep(1)
                 
                 try:
@@ -159,12 +186,12 @@ async def process_account(browser, cookie_b64, account_num):
             ("Repost", do_repost),
             ("Comment", do_comment)
         ]
-        random.shuffle(actions) # Har tab ke liye order shuffle ho jayega
+        random.shuffle(actions) 
         
         print("🎲 Random Action Order:", [a[0] for a in actions])
         for name, action in actions:
             await action()
-            await asyncio.sleep(random.uniform(1, 3)) # Do actions ke beech thoda random human delay
+            await asyncio.sleep(random.uniform(1, 3)) 
 
         print("✅ Saare Actions (Random Order mein) Done!")
 
