@@ -40,7 +40,6 @@ async def process_account(browser, cookie_b64, account_num):
     print(f"🟢 Starting Account {account_num}...")
     print(f"=========================================")
     
-    # Cloud ke liye wapas Base64 load kar raha hai
     cookie_str = base64.b64decode(cookie_b64).decode()
     cookies = json.loads(cookie_str)
     
@@ -58,14 +57,11 @@ async def process_account(browser, cookie_b64, account_num):
     await context.add_cookies(cleaned_cookies)
     page = await context.new_page()
 
+    start_time = time.time()
     try:
-        print("🏠 Warming up on Home Page...")
-        await page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
-        await asyncio.sleep(4)
-        
-        print(f"🎯 Going to Target URL: {TARGET_URL}")
+        # 👇 CHANGE 2: Home page warmup hata diya, sidha Target URL par jaa raha hai
+        print(f"🎯 Going Directly to Target URL: {TARGET_URL}")
         await page.goto(TARGET_URL, wait_until="domcontentloaded")
-        start_time = time.time()
         
         # --- RANDOM ACTION START TIME (15s to 45s) ---
         action_start_delay = random.randint(15, 45)
@@ -74,7 +70,6 @@ async def process_account(browser, cookie_b64, account_num):
         
         current_comment = random.choice(COMMENTS_LIST)
         
-        # Action Functions Define kar rahe hain taki inko random order me chala sakein
         async def do_like():
             try:
                 print("❤️ Trying to Like...")
@@ -159,12 +154,12 @@ async def process_account(browser, cookie_b64, account_num):
             ("Repost", do_repost),
             ("Comment", do_comment)
         ]
-        random.shuffle(actions) # Har tab ke liye order shuffle ho jayega
+        random.shuffle(actions) 
         
         print("🎲 Random Action Order:", [a[0] for a in actions])
         for name, action in actions:
             await action()
-            await asyncio.sleep(random.uniform(1, 3)) # Do actions ke beech thoda random human delay
+            await asyncio.sleep(random.uniform(1, 3)) 
 
         print("✅ Saare Actions (Random Order mein) Done!")
 
@@ -197,10 +192,12 @@ async def process_account(browser, cookie_b64, account_num):
 
 async def main():
     async with async_playwright() as p:
-        # 🚨 GitHub cloud ke liye headless=True
-        browser = await p.chromium.launch(headless=True, args=["--start-maximized"])
+        # 👇 CHANGE 1: channel="chrome" add kar diya asli Google Chrome chalane ke liye
+        browser = await p.chromium.launch(headless=True, channel="chrome", args=["--start-maximized"])
+        
         await process_account(browser, C1_B64, 1)
         await process_account(browser, C2_B64, 2)
+        
         print("\n🏆 SAARE ACCOUNTS KA KAAM SUCCESSFULLY COMPLETE HO GAYA!")
         await browser.close()
 
