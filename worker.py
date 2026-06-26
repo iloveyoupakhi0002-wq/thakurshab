@@ -233,17 +233,16 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(channel="chrome", headless=True, args=["--start-maximized"])
         
-        print("\n🚀 Dono accounts ko ek saath (Parallel) start kar rahe hain...\n")
+        print("\n🚀 Ek-ek karke (Sequential) accounts start kar rahe hain...\n")
         
-        tasks = []
+        # 🚨 PARALLEL (asyncio.gather) HATA DIYA HAI. Ab ek khatam hoga, tab dusra chalega.
         if C1_B64:
-            tasks.append(process_account(browser, C1_B64, 1))
-        if C2_B64:
-            tasks.append(process_account(browser, C2_B64, 2))
+            await process_account(browser, C1_B64, 1)
             
-        if tasks:
-            await asyncio.gather(*tasks)
-        else:
+        if C2_B64:
+            await process_account(browser, C2_B64, 2)
+            
+        if not C1_B64 and not C2_B64:
             print("⚠️ Koi cookie provide nahi ki gayi hai!")
             
         print("\n🏆 SAARE ACCOUNTS KA KAAM SUCCESSFULLY COMPLETE HO GAYA!")
