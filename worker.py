@@ -166,29 +166,39 @@ async def process_account(browser, cookie_b64, account_num):
                     await page.keyboard.type(current_comment, delay=150)
                     await asyncio.sleep(1)
                     
-                    # 🚨 UPDATE: Advanced Post Clicker + 'Enter' Key Fallback
-                    await page.evaluate("""(() => {
-                        let elements = document.querySelectorAll('div[role="button"], button, span, div');
-                        // Reverse loop chalayenge taki specific comment box wala 'Post' jaldi mile
-                        for(let i = elements.length - 1; i >= 0; i--) {
-                            let el = elements[i];
-                            if(el.textContent && el.textContent.trim() === 'Post') {
-                                let btn = el.closest('div[role="button"], button') || el;
-                                btn.click();
-                                break;
-                            }
-                        }
-                    })();""")
-                    
-                    # Kyunki cursor already box me active hai, 'Enter' dabana 100% safe hai
-                    await asyncio.sleep(1)
-                    await page.keyboard.press("Enter")
-                    print(f"✅ Account {account_num}: Comment Post command sent!")
-                    
+                    # 🚨 UPDATE: NATIVE PLAYWRIGHT CLICK (Kyunki React nakli JS clicks block kar raha hai)
+                    print(f"💬 Account {account_num}: Pressing Post button...")
+                    try:
+                        # Hum strict locator use kar rahe hain taaki sirf Post button dabe
+                        post_btn = page.locator('div[role="button"]:has-text("Post"), span:text-is("Post")').last
+                        if await post_btn.count() > 0:
+                            await post_btn.click(force=True)
+                            print(f"✅ Account {account_num}: Comment posted successfully!")
+                        else:
+                            # Direct text fallback
+                            await page.locator('text="Post"').last.click(force=True)
+                            print(f"✅ Account {account_num}: Comment posted successfully (fallback)!")
+                    except Exception as e:
+                        print(f"⚠️ Native click failed: {e}. Trying Tab + Enter fallback...")
+                        await page.keyboard.press("Tab")
+                        await asyncio.sleep(0.5)
+                        await page.keyboard.press("Enter")
+                        
                 else:
                     print(f"⚠️ Account {account_num}: Comment box detect nahi hua.")
                     
                 await asyncio.sleep(4)
+                
+                # 🚨 NAYA: Comment Box popup ko close karna taaki screenshot clean aaye
+                await page.evaluate("""(() => {
+                    let closeBtns = document.querySelectorAll('svg[aria-label="Close"]');
+                    if(closeBtns.length > 0) {
+                        let btn = closeBtns[closeBtns.length - 1].closest('div[role="button"], button');
+                        if(btn) { btn.click(); }
+                    }
+                })();""")
+                await asyncio.sleep(1)
+                
             except Exception as e: 
                 print(f"❌ Account {account_num} Comment fail hua: {e}")
 
