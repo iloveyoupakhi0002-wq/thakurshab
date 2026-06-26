@@ -119,13 +119,11 @@ async def process_account(browser, cookie_b64, account_num):
                     })();""")
                     print(f"✅ Account {account_num}: Repost done via JS!")
 
-                    # 🚨 NAYA LOGIC: "You reposted this" Popup Close Karne Ke Liye
-                    await asyncio.sleep(2) # Popup screen par aane ka wait
+                    # Popup Close Karne Ke Liye
+                    await asyncio.sleep(2)
                     await page.evaluate("""(() => {
-                        // "Close" aria-label wala SVG (X button) find karna
                         let closeBtns = document.querySelectorAll('svg[aria-label="Close"]');
                         if(closeBtns.length > 0) {
-                            // Sabse latest popup wale button ko click karna
                             let btn = closeBtns[closeBtns.length - 1].closest('div[role="button"], button');
                             if(btn) { btn.click(); }
                         }
@@ -169,16 +167,19 @@ async def process_account(browser, cookie_b64, account_num):
                     await page.keyboard.type(current_comment, delay=150)
                     await asyncio.sleep(1)
                     
-                    await page.evaluate("""(() => {
-                        let elements = document.querySelectorAll('div[role="button"], span');
-                        for(let el of elements) {
-                            if(el.textContent && el.textContent.trim() === 'Post') {
-                                let btn = el.closest('div[role="button"]') || el;
-                                btn.click();
-                                break;
-                            }
-                        }
-                    })();""")
+                    print(f"⌨️ Account {account_num}: Pressing 'Enter' to publish comment...")
+                    await page.keyboard.press("Enter")
+                    await asyncio.sleep(1)
+                    
+                    # Backup click: Agar Enter se post nahi hua
+                    try:
+                        post_btn = page.locator("div[role='button'], span").filter(has_text="Post").last
+                        if await post_btn.is_visible(timeout=1000):
+                            await post_btn.click()
+                            print(f"✅ Account {account_num}: 'Post' button clicked via Playwright!")
+                    except Exception:
+                        pass
+                        
                 else:
                     print(f"⚠️ Account {account_num}: Comment box detect nahi hua.")
                     
@@ -239,7 +240,7 @@ async def main():
         if C1_B64:
             await process_account(browser, C1_B64, 1)
             print("🟢 Account 1 ka session poora ho gaya!\n")
-            await asyncio.sleep(2) # Ek chota sa delay takki dusra account smoothly shuru ho
+            await asyncio.sleep(2) 
         
         # --- Account 1 ke band hone ke baad Account 2 khulega ---
         if C2_B64:
