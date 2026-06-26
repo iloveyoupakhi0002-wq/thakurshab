@@ -167,18 +167,30 @@ async def process_account(browser, cookie_b64, account_num):
                     await page.keyboard.type(current_comment, delay=150)
                     await asyncio.sleep(1)
                     
-                    print(f"⌨️ Account {account_num}: Pressing 'Enter' to publish comment...")
-                    await page.keyboard.press("Enter")
-                    await asyncio.sleep(1)
+                    # 🚀 NAYA 100% CONFIRM INSPECT ELEMENT LOGIC 
+                    posted_via_js = await page.evaluate("""(() => {
+                        let elements = document.querySelectorAll('div[role="button"]');
+                        for(let el of elements) {
+                            if(el.textContent && el.textContent.trim() === 'Post') {
+                                el.click();
+                                return true;
+                            }
+                        }
+                        return false;
+                    })();""")
                     
-                    # Backup click: Agar Enter se post nahi hua
-                    try:
-                        post_btn = page.locator("div[role='button'], span").filter(has_text="Post").last
-                        if await post_btn.is_visible(timeout=1000):
-                            await post_btn.click()
-                            print(f"✅ Account {account_num}: 'Post' button clicked via Playwright!")
-                    except Exception:
-                        pass
+                    if posted_via_js:
+                        print(f"✅ Account {account_num}: 'Post' button clicked successfully via EXACT element logic!")
+                    else:
+                        print(f"⚠️ Account {account_num}: JS fail hua, Playwright Native Click try kar raha hu...")
+                        try:
+                            # Exact match locator based on your inspect element
+                            post_locator = page.locator('div[role="button"]:text-is("Post")')
+                            if await post_locator.count() > 0:
+                                await post_locator.last.click(timeout=3000)
+                                print(f"✅ Account {account_num}: Posted via Playwright Native Click!")
+                        except Exception as inner_e:
+                            print(f"❌ Account {account_num} dono method se Post button click nahi hua.")
                         
                 else:
                     print(f"⚠️ Account {account_num}: Comment box detect nahi hua.")
