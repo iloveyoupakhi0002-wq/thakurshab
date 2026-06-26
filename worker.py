@@ -119,10 +119,13 @@ async def process_account(browser, cookie_b64, account_num):
                     })();""")
                     print(f"✅ Account {account_num}: Repost done via JS!")
 
-                    await asyncio.sleep(2) 
+                    # 🚨 NAYA LOGIC: "You reposted this" Popup Close Karne Ke Liye
+                    await asyncio.sleep(2) # Popup screen par aane ka wait
                     await page.evaluate("""(() => {
+                        // "Close" aria-label wala SVG (X button) find karna
                         let closeBtns = document.querySelectorAll('svg[aria-label="Close"]');
                         if(closeBtns.length > 0) {
+                            // Sabse latest popup wale button ko click karna
                             let btn = closeBtns[closeBtns.length - 1].closest('div[role="button"], button');
                             if(btn) { btn.click(); }
                         }
@@ -166,39 +169,20 @@ async def process_account(browser, cookie_b64, account_num):
                     await page.keyboard.type(current_comment, delay=150)
                     await asyncio.sleep(1)
                     
-                    # 🚨 UPDATE: NATIVE PLAYWRIGHT CLICK (Kyunki React nakli JS clicks block kar raha hai)
-                    print(f"💬 Account {account_num}: Pressing Post button...")
-                    try:
-                        # Hum strict locator use kar rahe hain taaki sirf Post button dabe
-                        post_btn = page.locator('div[role="button"]:has-text("Post"), span:text-is("Post")').last
-                        if await post_btn.count() > 0:
-                            await post_btn.click(force=True)
-                            print(f"✅ Account {account_num}: Comment posted successfully!")
-                        else:
-                            # Direct text fallback
-                            await page.locator('text="Post"').last.click(force=True)
-                            print(f"✅ Account {account_num}: Comment posted successfully (fallback)!")
-                    except Exception as e:
-                        print(f"⚠️ Native click failed: {e}. Trying Tab + Enter fallback...")
-                        await page.keyboard.press("Tab")
-                        await asyncio.sleep(0.5)
-                        await page.keyboard.press("Enter")
-                        
+                    await page.evaluate("""(() => {
+                        let elements = document.querySelectorAll('div[role="button"], span');
+                        for(let el of elements) {
+                            if(el.textContent && el.textContent.trim() === 'Post') {
+                                let btn = el.closest('div[role="button"]') || el;
+                                btn.click();
+                                break;
+                            }
+                        }
+                    })();""")
                 else:
                     print(f"⚠️ Account {account_num}: Comment box detect nahi hua.")
                     
                 await asyncio.sleep(4)
-                
-                # 🚨 NAYA: Comment Box popup ko close karna taaki screenshot clean aaye
-                await page.evaluate("""(() => {
-                    let closeBtns = document.querySelectorAll('svg[aria-label="Close"]');
-                    if(closeBtns.length > 0) {
-                        let btn = closeBtns[closeBtns.length - 1].closest('div[role="button"], button');
-                        if(btn) { btn.click(); }
-                    }
-                })();""")
-                await asyncio.sleep(1)
-                
             except Exception as e: 
                 print(f"❌ Account {account_num} Comment fail hua: {e}")
 
@@ -249,13 +233,18 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(channel="chrome", headless=True, args=["--start-maximized"])
         
-        print("\n🚀 Ek-ek karke (Sequential) accounts start kar rahe hain...\n")
+        print("\n🚀 Accounts ko ab ek-ek karke (Sequential) start kar rahe hain...\n")
         
+        # --- Pehle Account 1 ka kaam hoga ---
         if C1_B64:
             await process_account(browser, C1_B64, 1)
-            
+            print("🟢 Account 1 ka session poora ho gaya!\n")
+            await asyncio.sleep(2) # Ek chota sa delay takki dusra account smoothly shuru ho
+        
+        # --- Account 1 ke band hone ke baad Account 2 khulega ---
         if C2_B64:
             await process_account(browser, C2_B64, 2)
+            print("🟢 Account 2 ka session poora ho gaya!\n")
             
         if not C1_B64 and not C2_B64:
             print("⚠️ Koi cookie provide nahi ki gayi hai!")
