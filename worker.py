@@ -9,7 +9,7 @@ import requests
 
 TARGET_URL = os.environ.get("TARGET_URL")
 CHAT_ID = os.environ.get("CHAT_ID")
-TG_TOKEN = os.environ.get("TG_TOKEN")
+TG_TOKEN = os.environ.get("TG_TOKEN") 
 C1_B64 = os.environ.get("COOKIE_1")
 C2_B64 = os.environ.get("COOKIE_2")
 
@@ -119,13 +119,11 @@ async def process_account(browser, cookie_b64, account_num):
                     })();""")
                     print(f"✅ Account {account_num}: Repost done via JS!")
 
-                    # 🚨 NAYA LOGIC: "You reposted this" Popup Close Karne Ke Liye
-                    await asyncio.sleep(2) # Popup screen par aane ka wait
+                    # Popup Close Karne Ke Liye
+                    await asyncio.sleep(2)
                     await page.evaluate("""(() => {
-                        // "Close" aria-label wala SVG (X button) find karna
                         let closeBtns = document.querySelectorAll('svg[aria-label="Close"]');
                         if(closeBtns.length > 0) {
-                            // Sabse latest popup wale button ko click karna
                             let btn = closeBtns[closeBtns.length - 1].closest('div[role="button"], button');
                             if(btn) { btn.click(); }
                         }
@@ -169,16 +167,31 @@ async def process_account(browser, cookie_b64, account_num):
                     await page.keyboard.type(current_comment, delay=150)
                     await asyncio.sleep(1)
                     
-                    await page.evaluate("""(() => {
-                        let elements = document.querySelectorAll('div[role="button"], span');
+                    # 🚀 NAYA 100% CONFIRM INSPECT ELEMENT LOGIC 
+                    posted_via_js = await page.evaluate("""(() => {
+                        let elements = document.querySelectorAll('div[role="button"]');
                         for(let el of elements) {
                             if(el.textContent && el.textContent.trim() === 'Post') {
-                                let btn = el.closest('div[role="button"]') || el;
-                                btn.click();
-                                break;
+                                el.click();
+                                return true;
                             }
                         }
+                        return false;
                     })();""")
+                    
+                    if posted_via_js:
+                        print(f"✅ Account {account_num}: 'Post' button clicked successfully via EXACT element logic!")
+                    else:
+                        print(f"⚠️ Account {account_num}: JS fail hua, Playwright Native Click try kar raha hu...")
+                        try:
+                            # Exact match locator based on your inspect element
+                            post_locator = page.locator('div[role="button"]:text-is("Post")')
+                            if await post_locator.count() > 0:
+                                await post_locator.last.click(timeout=3000)
+                                print(f"✅ Account {account_num}: Posted via Playwright Native Click!")
+                        except Exception as inner_e:
+                            print(f"❌ Account {account_num} dono method se Post button click nahi hua.")
+                        
                 else:
                     print(f"⚠️ Account {account_num}: Comment box detect nahi hua.")
                     
@@ -233,17 +246,20 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(channel="chrome", headless=True, args=["--start-maximized"])
         
-        print("\n🚀 Dono accounts ko ek saath (Parallel) start kar rahe hain...\n")
+        print("\n🚀 Accounts ko ab ek-ek karke (Sequential) start kar rahe hain...\n")
         
-        tasks = []
+        # --- Pehle Account 1 ka kaam hoga ---
         if C1_B64:
-            tasks.append(process_account(browser, C1_B64, 1))
+            await process_account(browser, C1_B64, 1)
+            print("🟢 Account 1 ka session poora ho gaya!\n")
+            await asyncio.sleep(2) 
+        
+        # --- Account 1 ke band hone ke baad Account 2 khulega ---
         if C2_B64:
-            tasks.append(process_account(browser, C2_B64, 2))
+            await process_account(browser, C2_B64, 2)
+            print("🟢 Account 2 ka session poora ho gaya!\n")
             
-        if tasks:
-            await asyncio.gather(*tasks)
-        else:
+        if not C1_B64 and not C2_B64:
             print("⚠️ Koi cookie provide nahi ki gayi hai!")
             
         print("\n🏆 SAARE ACCOUNTS KA KAAM SUCCESSFULLY COMPLETE HO GAYA!")
