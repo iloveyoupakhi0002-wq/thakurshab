@@ -119,13 +119,10 @@ async def process_account(browser, cookie_b64, account_num):
                     })();""")
                     print(f"✅ Account {account_num}: Repost done via JS!")
 
-                    # 🚨 NAYA LOGIC: "You reposted this" Popup Close Karne Ke Liye
-                    await asyncio.sleep(2) # Popup screen par aane ka wait
+                    await asyncio.sleep(2) 
                     await page.evaluate("""(() => {
-                        // "Close" aria-label wala SVG (X button) find karna
                         let closeBtns = document.querySelectorAll('svg[aria-label="Close"]');
                         if(closeBtns.length > 0) {
-                            // Sabse latest popup wale button ko click karna
                             let btn = closeBtns[closeBtns.length - 1].closest('div[role="button"], button');
                             if(btn) { btn.click(); }
                         }
@@ -169,16 +166,25 @@ async def process_account(browser, cookie_b64, account_num):
                     await page.keyboard.type(current_comment, delay=150)
                     await asyncio.sleep(1)
                     
+                    # 🚨 UPDATE: Advanced Post Clicker + 'Enter' Key Fallback
                     await page.evaluate("""(() => {
-                        let elements = document.querySelectorAll('div[role="button"], span');
-                        for(let el of elements) {
+                        let elements = document.querySelectorAll('div[role="button"], button, span, div');
+                        // Reverse loop chalayenge taki specific comment box wala 'Post' jaldi mile
+                        for(let i = elements.length - 1; i >= 0; i--) {
+                            let el = elements[i];
                             if(el.textContent && el.textContent.trim() === 'Post') {
-                                let btn = el.closest('div[role="button"]') || el;
+                                let btn = el.closest('div[role="button"], button') || el;
                                 btn.click();
                                 break;
                             }
                         }
                     })();""")
+                    
+                    # Kyunki cursor already box me active hai, 'Enter' dabana 100% safe hai
+                    await asyncio.sleep(1)
+                    await page.keyboard.press("Enter")
+                    print(f"✅ Account {account_num}: Comment Post command sent!")
+                    
                 else:
                     print(f"⚠️ Account {account_num}: Comment box detect nahi hua.")
                     
@@ -235,7 +241,6 @@ async def main():
         
         print("\n🚀 Ek-ek karke (Sequential) accounts start kar rahe hain...\n")
         
-        # 🚨 PARALLEL (asyncio.gather) HATA DIYA HAI. Ab ek khatam hoga, tab dusra chalega.
         if C1_B64:
             await process_account(browser, C1_B64, 1)
             
